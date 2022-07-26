@@ -49,7 +49,6 @@ class myclip(nn.Module):
 
     def encode_response(self, text):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
-
         x = x + self.r_positional_embedding.type(self.dtype)
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.response(x)
@@ -67,21 +66,29 @@ class myclip(nn.Module):
         x = self.q_ln_final(x).type(self.dtype)
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.q_text_projection
         return x
-    def forward(self, query, response):
-        image_features = self.encode_query(query)
-        text_features = self.encode_response(response)
+    def forward(self, query, response,image_features):
+        q_features = self.encode_query(query)
+        r_features = self.encode_response(response)
 
         # normalized features
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
-        text_features = text_features / text_features.norm(dim=1, keepdim=True)
-
-        # cosine similarity as logits
+        q_features = q_features / q_features.norm(dim=1, keepdim=True)
+        r_features = r_features / r_features.norm(dim=1, keepdim=True)
+        #each of these is B x D
+        #in a square we get BxB Matrix of DxD matrices for logits
+        #for 3 features we get BxBxB matrix of DxDxD matrices for logits
+        image_features=image_features.unsqueeze(-1)
+        q_features=q_features.unsqueeze(-1)
+        r_features=r_features.unsqueeze(-1)
         logit_scale = self.logit_scale.exp()
-        logits_per_image = logit_scale * image_features @ text_features.t()
-        logits_per_text = logits_per_image.t()
+        logitscale2=logit_scale.pow(2)
+        logits_per_im= logitscale2 * image_features @ q_features.permute(2,1,0) @ r_features.permute(1,2,0)
+        logits_per_r= logitscale2 *  r_features @ image_features.permute(2,1,0) @ q_features.permute(1,2,0)
+        logits_per_q= logitscale2 * q_features @ r_features.permute(2,1,0) @ image_features.permute(1,2,0)
 
-        # shape = [global_batch_size, global_batch_size]
-        return logits_per_image, logits_per_text
+        return logits_per_im, logits_per_r, logits_per_q
+
+
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
@@ -137,16 +144,21 @@ class LightningCLIPModule(LightningModule):
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossq = torch.nn.CrossEntropyLoss()
         self.lossr = torch.nn.CrossEntropyLoss()
+        self.lossim=torch.nn.CrossEntropyLoss()
 
     def forward(self, query, response):
         return self.clip(query, response)
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=torch.arange(batch[0].shape[0],dtype=torch.long).to(self.device,non_blocking=True)
-        query ,response= batch[0].squeeze(1),batch[1].squeeze(1)
-        qlogits, rlogits = self(query, response)
+        dims=batch[0].shape[0]
+        labels=torch.arange(dims,dtype=torch.long,device=self.device)
+        labels=torch.diag_embed(labels)
+
+        query ,response,im= batch[0],batch[1],batch[2]
+        imlogits, rlogits,qlogits = self(query, response,im)
         lossq = self.lossq(rlogits, labels)
         lossr = self.lossr(qlogits, labels)
-        loss = lossq+lossr
+        lossim=self.lossim(imlogits, labels)
+        loss = lossq+lossr+lossim
         loss = loss.mean()
         self.log('train_loss', loss.item())
         return {"loss": loss, "log": {"train_loss": loss}}
