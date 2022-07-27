@@ -14,6 +14,49 @@ tokenizer.pad_token = tokenizer.eos_token
 from torchvision import transforms
 from PIL import Image
 Rs=transforms.Resize((224,224),interpolation=Image.NEAREST)
+
+
+class TriModal(torch.utils.data.Dataset):
+    def __init__(self,dir,transform=None):
+        self.dir=dir
+        self.transform=transform
+        self.imdir=os.path.join(dir,"images")
+        self.datadir=os.path.join(dir,"data")
+        filea="train_machine_spanish.xlsx"
+        fileb="train_machine_english.xlsx"
+        Spdataframe=pd.read_excel(os.path.join(self.datadir,filea))
+        Endataframe=pd.read_excel(os.path.join(self.datadir,fileb))
+        self.spanSentences=torch.stack([tokenizer(
+                    sent,                      # Sentence to encode.
+                    add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                    max_length = 77,           # Pad & truncate all sentences.
+                    padding = "max_length",
+                    truncation=True,
+                    return_attention_mask = False,   # Construct attn. masks.
+                    return_tensors = 'pt',     # Return pytorch tensors.
+                )['input_ids'] for sent in Spdataframe['caption']],dim=0)
+        self.enSentences=torch.stack([tokenizer(
+                    sent,                      # Sentence to encode.
+                    add_special_tokens = True, # Add '[CLS]' and '[SEP]'
+                    max_length = 77,           # Pad & truncate all sentences.
+                    padding = "max_length",
+                    truncation=True,
+                    return_attention_mask = False,   # Construct attn. masks.
+                    return_tensors = 'pt',     # Return pytorch tensors.
+                )['input_ids'] for sent in Endataframe['caption']],dim=0)
+        self.filenames=Endataframe['image_id']
+    def __len__(self):
+        return len(self.enSentences)
+    def __getitem__(self,idx):
+    
+        imid=self.filenames[idx]
+        imid="".join([(12-len(str(imid)))*"0"]+[str(imid)]+[".jpg"])
+        img=Image.open(os.path.join(self.dir,imid))
+        img=Rs(img)
+        if self.transform:
+            img=self.transform(img)
+        return self.enSentences[idx],self.spanSentences[idx], img
+
 class DataSet(torch.utils.data.Dataset):
     def __init__(self,dir,filenames,transform=None):
         self.dir=dir
@@ -32,7 +75,7 @@ class DataSet(torch.utils.data.Dataset):
         return img
 class DataModule(pl.LightningDataModule):
 
-    def __init__(self,dir="MSCOCOES",batch_size=3,):
+    def __init__(self,dir="MS-COCO-ES",batch_size=3,):
         super().__init__(batch_size)
         self.batch_size=batch_size
         self.datadir=os.path.join(dir,"data")
@@ -58,7 +101,7 @@ class DataModule(pl.LightningDataModule):
                     
                 filea="train_machine_spanish.xlsx"
                 fileb="train_machine_english.xlsx"
-                dataframe=pd.read_excel(os.path.join(self.datadir,filea))
+                dataframe=pd.read_excel(os.path.join(self.datadir,filea),engine="openpyxl")
                 sentencesa= torch.stack([tokenizer(
                     sent,                      # Sentence to encode.
                     add_special_tokens = True, # Add '[CLS]' and '[SEP]'
@@ -68,7 +111,7 @@ class DataModule(pl.LightningDataModule):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in dataframe['caption']],dim=0)
-                dataframe=pd.read_excel(os.path.join(self.datadir,fileb))
+                dataframe=pd.read_excel(os.path.join(self.datadir,fileb),engine="openpyxl")
 
                 sentencesb= torch.stack([tokenizer(
                     sent,                      # Sentence to encode.
