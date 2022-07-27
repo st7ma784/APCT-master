@@ -196,5 +196,6 @@ if __name__ == "__main__":
         gradient_clip_val=0.25,
         fast_dev_run=False
     )
+    
     model=LightningCLIPModule()
     trainer.fit(model,data_module)
