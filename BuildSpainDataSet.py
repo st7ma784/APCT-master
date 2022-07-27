@@ -51,7 +51,7 @@ class TriModal(torch.utils.data.Dataset):
     
         imid=self.filenames[idx]
         imid="".join([(12-len(str(imid)))*"0"]+[str(imid)]+[".jpg"])
-        img=Image.open(os.path.join(self.dir,imid))
+        img=Image.open(os.path.join(self.imdir,imid))
         img=Rs(img)
         if self.transform:
             img=self.transform(img)

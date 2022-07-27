@@ -190,11 +190,11 @@ class LightningCLIPModule(LightningModule):
 
 if __name__ == "__main__":
     #Load Data Module and begin training
-    from BuildSpainDataSet import DataModule,TriModal
+    from BuildSpainDataSet import TriModal
     model=LightningCLIPModule(clip=True)
 
-    Dataset=TriModal(dir,transform=model.preprocess)
-    data_module = Dataloader(Dataset,batch_size=256,shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
+    Dataset=TriModal(dir="MS-COCO-ES",transform=model.preprocess)
+    data_module = torch.utils.data.DataLoader(Dataset,batch_size=64,shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
     callbacks=[
         ModelCheckpoint(filename="CLIPModule",save_last=True, every_n_epochs=50, save_on_train_epoch_end=None),
         TQDMProgressBar()
