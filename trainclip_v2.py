@@ -77,15 +77,13 @@ class myclip(nn.Module):
         #each of these is B x D
         #in a square we get BxB Matrix of DxD matrices for logits
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
-        image_features=image_features.unsqueeze(-1)
-        q_features=q_features.unsqueeze(-1)
-        r_features=r_features.unsqueeze(-1)
+        image_features=image_features
+        q_features=q_features
+        r_features=r_features
         logit_scale = self.logit_scale.exp()
-        logitscale2=logit_scale.pow(2)
-        logits_per_im= logitscale2 * image_features @ q_features.permute(2,1,0) @ r_features.permute(1,2,0)
-        logits_per_r= logitscale2 *  r_features @ image_features.permute(2,1,0) @ q_features.permute(1,2,0)
-        logits_per_q= logitscale2 * q_features @ r_features.permute(2,1,0) @ image_features.permute(1,2,0)
-
+        logits_per_r= logit_scale *  r_features @ q_features.t()
+        logits_per_q= logit_scale * q_features  @ image_features.t()
+        logits_per_im= logit_scale * image_features @ r_features.t()
         return logits_per_im, logits_per_r, logits_per_q
 
 
@@ -120,7 +118,7 @@ class myclip(nn.Module):
 
 
 class LightningCLIPModule(LightningModule):
-    def __init__(self,clip=True,
+    def __init__(self,useclip=True,
                 learning_rate: float = 2e-4,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
@@ -134,15 +132,15 @@ class LightningCLIPModule(LightningModule):
 
         super(LightningCLIPModule, self).__init__()
         self.save_hyperparameters()
-        self.hasclip = clip
-        if clip:
+        self.hasclip = useclip
+        if self.hasclip:
             from clip import clip
-            self.stockclip,self.preprocess = self.clip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
+            self.stockclip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
         else:
             self.preprocess=None
         self.clip = myclip(embed_dim= 512,
                  context_length= 77,
-                 vocab_size= 32100,
+                 vocab_size= 50257,
                  transformer_width= 512,
                  transformer_heads= 32,
                  transformer_layers= 4)
@@ -153,18 +151,18 @@ class LightningCLIPModule(LightningModule):
         self.lossim=torch.nn.CrossEntropyLoss()
 
     def forward(self, query, response,im):
-        return self.clip(query, response)
+        return self.clip(query, response,im)
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         dims=batch[0].shape[0]
         labels=torch.arange(dims,dtype=torch.long,device=self.device)
-        labels=torch.diag_embed(labels)
+        #labels=torch.diag_embed(labels)
 
         query ,response,im= batch[0],batch[1],batch[2]
         if self.hasclip:
             im=self.stockclip.encode_image(im)
         imlogits, rlogits,qlogits = self(query, response,im)
-        lossq = self.lossq(rlogits, labels)
-        lossr = self.lossr(qlogits, labels)
+        lossq = self.lossq(qlogits, labels)
+        lossr = self.lossr(rlogits, labels)
         lossim=self.lossim(imlogits, labels)
         loss = lossq+lossr+lossim
         loss = loss.mean()
@@ -194,7 +192,7 @@ if __name__ == "__main__":
     model=LightningCLIPModule(clip=True)
 
     Dataset=TriModal(dir="MS-COCO-ES",transform=model.preprocess)
-    data_module = torch.utils.data.DataLoader(Dataset,batch_size=64,shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
+    data_module = torch.utils.data.DataLoader(Dataset,batch_size=32,shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
     callbacks=[
         ModelCheckpoint(filename="CLIPModule",save_last=True, every_n_epochs=50, save_on_train_epoch_end=None),
         TQDMProgressBar()
@@ -205,7 +203,7 @@ if __name__ == "__main__":
         max_epochs=100,
         callbacks=callbacks,
         gradient_clip_val=0.25,
-        fast_dev_run=False
+        fast_dev_run=False,
     )
     
     model=LightningCLIPModule()

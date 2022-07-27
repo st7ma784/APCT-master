@@ -18,6 +18,7 @@ Rs=transforms.Resize((224,224),interpolation=Image.NEAREST)
 
 class TriModal(torch.utils.data.Dataset):
     def __init__(self,dir,transform=None):
+        print(tokenizer.vocab_size)
         self.dir=dir
         self.transform=transform
         self.imdir=os.path.join(dir,"images")
@@ -26,7 +27,7 @@ class TriModal(torch.utils.data.Dataset):
         fileb="train_machine_english.xlsx"
         Spdataframe=pd.read_excel(os.path.join(self.datadir,filea))
         Endataframe=pd.read_excel(os.path.join(self.datadir,fileb))
-        self.spanSentences=torch.stack([tokenizer(
+        self.spanSentences=torch.cat([tokenizer(
                     sent,                      # Sentence to encode.
                     add_special_tokens = True, # Add '[CLS]' and '[SEP]'
                     max_length = 77,           # Pad & truncate all sentences.
@@ -35,7 +36,7 @@ class TriModal(torch.utils.data.Dataset):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in Spdataframe['caption']],dim=0)
-        self.enSentences=torch.stack([tokenizer(
+        self.enSentences=torch.cat([tokenizer(
                     sent,                      # Sentence to encode.
                     add_special_tokens = True, # Add '[CLS]' and '[SEP]'
                     max_length = 77,           # Pad & truncate all sentences.
