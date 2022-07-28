@@ -152,8 +152,7 @@ class LightningCLIPModule(LightningModule):
         return self.clip(query, response,im)
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         dims=batch[0].shape[0]
-        labels=torch.arange(dims,dtype=torch.long,device=self.device)
-        labels=torch.diag_embed(labels)
+        labels=torch.diag_embed(torch.arange(dims,dtype=torch.long,device=self.device)-self.lossq.ignore_index)+self.lossq.ignore_index
 
         query ,response,im= batch[0],batch[1],batch[2]
         if self.hasclip:
@@ -163,8 +162,8 @@ class LightningCLIPModule(LightningModule):
         lossr = self.lossr(rlogits, labels)
         lossim=self.lossim(imlogits, labels)
         loss = lossq+lossr+lossim
+        loss=loss/3
         loss = loss.mean()
-        self.log('train_loss', loss.item())
         return {"loss": loss, "log": {"train_loss": loss}}
 
             
@@ -179,9 +178,8 @@ class LightningCLIPModule(LightningModule):
 
         optimizer = torch.optim.Adam(
             optimizer_grouped_parameters, lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer, num_warmup_steps=self.hparams.warmup_steps, num_training_steps=self.hparams.total_steps)
-        return [optimizer], [scheduler]
+      
+        return [optimizer]
         
 
 if __name__ == "__main__":
