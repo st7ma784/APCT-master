@@ -77,13 +77,11 @@ class myclip(nn.Module):
         #each of these is B x D
         #in a square we get BxB Matrix of DxD matrices for logits
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
-        image_features=image_features
-        q_features=q_features
-        r_features=r_features
-        logit_scale = self.logit_scale.exp()
-        logits_per_r= logit_scale *  r_features @ q_features.t()
-        logits_per_q= logit_scale * q_features  @ image_features.t()
-        logits_per_im= logit_scale * image_features @ r_features.t()
+        CUBE=self.logit_scale.exp()*torch.einsum('b...,c...,d...->bcd',image_features,q_features,r_features)
+
+        logits_per_r= CUBE
+        logits_per_q= CUBE.permute(1,2,0)
+        logits_per_im= CUBE.permute(2,0,1)
         return logits_per_im, logits_per_r, logits_per_q
 
 
@@ -155,7 +153,7 @@ class LightningCLIPModule(LightningModule):
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         dims=batch[0].shape[0]
         labels=torch.arange(dims,dtype=torch.long,device=self.device)
-        #labels=torch.diag_embed(labels)
+        labels=torch.diag_embed(labels)
 
         query ,response,im= batch[0],batch[1],batch[2]
         if self.hasclip:
