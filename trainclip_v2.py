@@ -1,14 +1,12 @@
 
 import pytorch_lightning
-from transformers import AutoModelWithLMHead, get_linear_schedule_with_warmup
 from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
 import numpy as np
-from typing import Union,Tuple,Optional
-from clip.model import CLIP,Transformer,LayerNorm
-from clip.simple_tokenizer import SimpleTokenizer
-from pytorch_lightning.callbacks import ModelCheckpoint,TQDMProgressBar
+from typing import Optional
+from clip.model import Transformer,LayerNorm
+from pytorch_lightning.callbacks import TQDMProgressBar
 class myclip(nn.Module):
     def __init__(self,
                  embed_dim: int,
@@ -77,11 +75,13 @@ class myclip(nn.Module):
         #each of these is B x D
         #in a square we get BxB Matrix of DxD matrices for logits
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
-        CUBE=self.logit_scale.exp()*torch.einsum('b...,c...,d...->bcd',image_features,q_features,r_features)
+        logs=self.logit_scale.exp()
+        logits_per_im=logs*torch.einsum('b...,c...,d...->bcd',image_features,q_features,r_features)
 
-        logits_per_r= CUBE
-        logits_per_q= CUBE.permute(1,2,0)
-        logits_per_im= CUBE.permute(2,0,1)
+        logits_per_r= logs*torch.einsum('b...,c...,d...->bcd',r_features,image_features,q_features)
+
+        logits_per_q= logs*torch.einsum('b...,c...,d...->bcd',q_features,r_features,image_features)
+        
         return logits_per_im, logits_per_r, logits_per_q
 
 
@@ -116,13 +116,15 @@ class myclip(nn.Module):
 
 
 class LightningCLIPModule(LightningModule):
-    def __init__(self,useclip=True,
+    def __init__(self,
+                useclip_en=True,
+                useclip_im=True,
                 learning_rate: float = 2e-4,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
                 weight_decay: float = 0.0,
                 total_steps: int = 200000,
-                train_batch_size: int = 32,
+                train_batch_size: int = 64,
                 eval_batch_size: int = 32,
                 eval_splits: Optional[list] = None,
                 **kwargs,
@@ -130,18 +132,24 @@ class LightningCLIPModule(LightningModule):
 
         super(LightningCLIPModule, self).__init__()
         self.save_hyperparameters()
-        self.hasclip = useclip
-        if self.hasclip:
+        self.useclip_en = useclip_en
+        self.useclip_im = useclip_im
+        if self.useclip_en or self.useclip_im:
             from clip import clip
             self.stockclip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
         else:
             self.preprocess=None
+            self.stockclip=None
         self.clip = myclip(embed_dim= 512,
                  context_length= 77,
                  vocab_size= 50257,
                  transformer_width= 512,
                  transformer_heads= 32,
                  transformer_layers= 4)
+        if self.useclip_en:
+            self.encode_query=self.stockclip.encode_text
+        else:
+            self.encode_query=self.clip.encode_query
         self.clip.dtype=self.dtype
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossq = torch.nn.CrossEntropyLoss()
@@ -155,7 +163,7 @@ class LightningCLIPModule(LightningModule):
         labels=torch.diag_embed(torch.arange(dims,dtype=torch.long,device=self.device)-self.lossq.ignore_index)+self.lossq.ignore_index
 
         query ,response,im= batch[0],batch[1],batch[2]
-        if self.hasclip:
+        if self.useclip_im:
             im=self.stockclip.encode_image(im)
         imlogits, rlogits,qlogits = self(query, response,im)
         lossq = self.lossq(qlogits, labels)
@@ -168,39 +176,54 @@ class LightningCLIPModule(LightningModule):
 
             
     def configure_optimizers(self):
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {"params": [p for n, p in self.clip.named_parameters() if not any(nd in n for nd in no_decay)],
-                "weight_decay": self.hparams.weight_decay},
-            {"params": [p for n, p in self.clip.named_parameters() if any(nd in n for nd in no_decay)],
-                "weight_decay": 0.0,
-            }]
-
+        
         optimizer = torch.optim.Adam(
-            optimizer_grouped_parameters, lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
+            self.clip.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
         return [optimizer]
-        
-
-if __name__ == "__main__":
+import wandb
+def train(config={
+        "useclip_im":True,
+        "useclip_en":False,
+        "batchsize":64,
+        "learning_rate":2e-4,
+        "adam_epsilon":1e-8,
+        "precision":16,
+    }):
     #Load Data Module and begin training
     from BuildSpainDataSet import TriModal
-    model=LightningCLIPModule(clip=True)
+    with wandb.init( project="NDIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
+        model=LightningCLIPModule(  useclip_en=config["useclip_en"],
+                                    useclip_im=config["useclip_im"],
+                                    learning_rate = config["learning_rate"],
+                                    adam_epsilon = 1e-8)
+        Dataset=TriModal(dir="MS-COCO-ES",transform=model.preprocess)
+        data_module = torch.utils.data.DataLoader(Dataset,batch_size=config[100],shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
+        callbacks=[
+            TQDMProgressBar()
+        ]
+        logtool= pytorch_lightning.loggers.WandbLogger(experiment=run)
+        trainer=pytorch_lightning.Trainer(
+            devices="auto",
+            accelerator="auto",
+            max_epochs=100,
+            logger=logtool,
+            callbacks=callbacks,
+            gradient_clip_val=0.25,
+            fast_dev_run=False,
+            precision=config["precision"]
+        )
+        
+        
+        trainer.fit(model,data_module)
 
-    Dataset=TriModal(dir="MS-COCO-ES",transform=model.preprocess)
-    data_module = torch.utils.data.DataLoader(Dataset,batch_size=32,shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
-    callbacks=[
-        ModelCheckpoint(filename="CLIPModule",save_last=True, every_n_epochs=50, save_on_train_epoch_end=None),
-        TQDMProgressBar()
-    ]
-    trainer=pytorch_lightning.Trainer(
-        devices="auto",
-        accelerator="auto",
-        max_epochs=100,
-        callbacks=callbacks,
-        gradient_clip_val=0.25,
-        fast_dev_run=False,
-    )
-    
-    model=LightningCLIPModule()
-    trainer.fit(model,data_module)
+if __name__ == '__main__':
+    config={
+        "useclip_im":True,
+        "useclip_en":False,
+        "batchsize":64,
+        "learning_rate":2e-4,
+        "adam_epsilon":1e-8,
+        "precision":16,
+    }
+    train(config)
