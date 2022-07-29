@@ -11,10 +11,10 @@ from clip import clip
 tokenizer= AutoTokenizer.from_pretrained("gpt2")
 tokenizer.vocab["</s>"] = tokenizer.vocab_size -1
 tokenizer.pad_token = tokenizer.eos_token 
-from torchvision import transforms
+from torchvision.transforms import ToTensor, Compose, Resize
 from PIL import Image
-Rs=transforms.Resize((224,224),interpolation=Image.NEAREST)
-
+Rs=Resize((224,224),interpolation=Image.NEAREST)
+T= Compose([Rs,ToTensor()])
 
 class TriModal(torch.utils.data.Dataset):
     def __init__(self,dir,transform=None):
@@ -56,6 +56,8 @@ class TriModal(torch.utils.data.Dataset):
         img=Rs(img)
         if self.transform:
             img=self.transform(img)
+        else:
+            img=T(img)
         return self.enSentences[idx],self.spanSentences[idx], img
 
 class DataSet(torch.utils.data.Dataset):
@@ -70,10 +72,9 @@ class DataSet(torch.utils.data.Dataset):
 
         imid="".join([(12-len(str(imid)))*"0"]+[str(imid)]+[".jpg"])
         img=Image.open(os.path.join(self.dir,imid))
-        img=Rs(img)
         if self.transform:
-            img=self.transform(img)
-        return img
+            return self.transform(Rs(img))
+        return T(img)
 class DataModule(pl.LightningDataModule):
 
     def __init__(self,dir="MS-COCO-ES",batch_size=3,):

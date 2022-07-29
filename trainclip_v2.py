@@ -5,8 +5,9 @@ import torch.nn as nn
 import torch
 import numpy as np
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisualTransformer
+from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
+
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 useclip_en=True,
@@ -30,14 +31,16 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
+
+        self.context_length = context_length
+
         self.useclip_en = useclip_en
         self.useclip_im = useclip_im
+        from clip import clip
+        
+        stockclip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
         if self.useclip_en or self.useclip_im:
-            from clip import clip
-            self.stockclip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
-        else:
-            self.preprocess=None
-            self.stockclip=None
+            self.stockclip=stockclip
        
         if self.useclip_en:
             self.encode_query=self.stockclip.encode_text
@@ -52,7 +55,7 @@ class LightningCLIPModule(LightningModule):
         if self.useclip_im:
             self.encode_image=self.stockclip.encode_image
         else:
-            self.encode_image= VisualTransformer(
+            self.encode_image= VisionTransformer(
                 input_resolution=224,
                 patch_size=16,
                 width=transformer_width,
@@ -67,12 +70,10 @@ class LightningCLIPModule(LightningModule):
             heads=transformer_heads,
             attn_mask=self.build_attention_mask()
         )
-        self.clip.dtype=self.dtype
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossq = torch.nn.CrossEntropyLoss()
         self.lossr = torch.nn.CrossEntropyLoss()
         self.lossim=torch.nn.CrossEntropyLoss()
-        self.context_length = context_length
         self.vocab_size = vocab_size
 
         self.vocab_size = vocab_size
@@ -174,23 +175,24 @@ class LightningCLIPModule(LightningModule):
         loss = lossq+lossr+lossim
         loss=loss/3
         loss = loss.mean()
-        return {"loss": loss, "log": {"train_loss": loss}}
+        self.log('train_loss', loss, prog_bar=True)
+        return {"loss": loss}
 
             
     def configure_optimizers(self):
         
         optimizer = torch.optim.Adam(
-            self.clip.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
+            self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
         return [optimizer]
-import wandb
+import wandb,os
 def train(config={
         "useclip_im":True,
         "useclip_en":False,
         "batchsize":64,
         "learning_rate":2e-4,
         "precision":16,
-    }):
+    },dir=".",devices="auto",accelerator="auto"):
     #Load Data Module and begin training
     from BuildSpainDataSet import TriModal
     with wandb.init( project="NDIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
@@ -198,15 +200,15 @@ def train(config={
                                     useclip_im=config["useclip_im"],
                                     learning_rate = config["learning_rate"],
                                     adam_epsilon = 1e-8)
-        Dataset=TriModal(dir="MS-COCO-ES",transform=model.preprocess)
+        Dataset=TriModal(dir=os.path.join(dir,"MS-COCO-ES"),transform=model.preprocess)
         data_module = torch.utils.data.DataLoader(Dataset,batch_size=config["batchsize"],shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
         callbacks=[
             TQDMProgressBar()
         ]
         logtool= pytorch_lightning.loggers.WandbLogger(experiment=run)
         trainer=pytorch_lightning.Trainer(
-            devices="auto",
-            accelerator="auto",
+            devices=devices,
+            accelerator=accelerator,
             max_epochs=100,
             logger=logtool,
             callbacks=callbacks,
@@ -219,9 +221,9 @@ def train(config={
 
 if __name__ == '__main__':
     config={
-        "useclip_im":True,       #[True,False]
+        "useclip_im":False,       #[True,False]
         "useclip_en":False,     #[True,False]
-        "batchsize":64,         #[1,4,8,16,32,64]
+        "batchsize":32,         #[1,4,8,16,32,64]
         "learning_rate":2e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":16,         #[32,16,'bf16']
     }
