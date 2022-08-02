@@ -11,7 +11,9 @@ module add anaconda3/wmlce
 source activate $global_storage/conda4
 modelcache=$global_storage/data/pretraining
 module add git
-cd $global_storage/phdresearch
+cd $global_scratch
+git clone https://github.com/carlosGarciaHe/MS-COCO-ES.git
+cd $global_storage/NDimRL
 git pull
 export WANDB_SILENT=true
 export WANDB_RESUME=auto
@@ -22,5 +24,5 @@ export ISHEC=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=ALL
 export wandb='9cf7e97e2460c18a89429deed624ec1cbfb537bc'
-python trainagent.py --data_dir $global_scratch
+python trainagent.py --data_dir $global_scratch/ms-coco-es
 
