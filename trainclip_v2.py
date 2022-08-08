@@ -1,4 +1,5 @@
 
+from re import M
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn
@@ -7,7 +8,8 @@ import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
-
+from PIL import Image
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 useclip_en=True,
@@ -31,31 +33,21 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
-
+        self.preprocess=Compose([
+        Resize(224, interpolation=Image.BICUBIC),
+        CenterCrop(224),
+        lambda image: image.convert("RGB"),
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
         self.context_length = context_length
-
-        self.useclip_en = useclip_en
-        self.useclip_im = useclip_im
-        from clip import clip
-        
-        stockclip,self.preprocess = clip.load("ViT-B/32", jit=False, device=self.device)
-        if self.useclip_en or self.useclip_im:
-            self.stockclip=stockclip
-       
-        if self.useclip_en:
-            self.encode_query=self.stockclip.encode_text
-        else:
-            self.query = Transformer(
+        self.encoder = Transformer(
             width=transformer_width,
             layers=transformer_layers,
             heads=transformer_heads,
             attn_mask=self.build_attention_mask()
             )
-
-        if self.useclip_im:
-            self.encode_image=self.stockclip.encode_image
-        else:
-            self.encode_image= VisionTransformer(
+        self.encode_image= VisionTransformer(
                 input_resolution=224,
                 patch_size=16,
                 width=transformer_width,
@@ -64,29 +56,29 @@ class LightningCLIPModule(LightningModule):
                 output_dim=embed_dim
             )
         
-        self.response = Transformer(
-            width=transformer_width,
-            layers=transformer_layers,
-            heads=transformer_heads,
-            attn_mask=self.build_attention_mask()
-        )
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.lossq = torch.nn.CrossEntropyLoss()
-        self.lossr = torch.nn.CrossEntropyLoss()
         self.lossim=torch.nn.CrossEntropyLoss()
+        self.loss1=torch.nn.CrossEntropyLoss()
+        self.loss2=torch.nn.CrossEntropyLoss()
+        self.loss3=torch.nn.CrossEntropyLoss()
+        self.loss4=torch.nn.CrossEntropyLoss()
+        self.loss5=torch.nn.CrossEntropyLoss()
         self.vocab_size = vocab_size
 
         self.vocab_size = vocab_size
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
-        self.r_positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
-        self.q_positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
-        self.r_ln_final = LayerNorm(transformer_width)
-        self.q_ln_final = LayerNorm(transformer_width)
-        self.q_text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
-        self.r_text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
+        self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
+        self.ln_final = LayerNorm(transformer_width)
+        self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
-    
+        self.labels=torch.diag_embed(torch.arange(train_batch_size,dtype=torch.long,device=self.device)-self.lossim.ignore_index)
+
+        for i in range(3):
+            self.labels=torch.diag_embed(self.labels)
+        self.labels=self.labels+self.lossim.ignore_index
+        self.labels=self.labels.to(self.device)
+
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
@@ -99,83 +91,76 @@ class LightningCLIPModule(LightningModule):
     def initialize_parameters(self):
         nn.init.normal_(self.token_embedding.weight, std=0.02)
  
-        nn.init.normal_(self.r_positional_embedding, std=0.01)
+        nn.init.normal_(self.positional_embedding, std=0.01)
 
-        proj_std = (self.query.width ** -0.5) * ((2 * self.query.layers) ** -0.5)
-        attn_std = self.query.width ** -0.5
-        fc_std = (2 * self.query.width) ** -0.5
-        if not self.useclip_en:
-            nn.init.normal_(self.q_positional_embedding, std=0.01)
-            for block in self.query.resblocks:
-                nn.init.normal_(block.attn.in_proj_weight, std=attn_std)
-                nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
-                nn.init.normal_(block.mlp.c_fc.weight, std=fc_std)
-                nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
-            nn.init.normal_(self.q_text_projection, std=self.query.width ** -0.5)
+        proj_std = (self.encoder.width ** -0.5) * ((2 * self.encoder.layers) ** -0.5)
+        attn_std = self.encoder.width ** -0.5
+        fc_std = (2 * self.encoder.width) ** -0.5
 
-        for block in self.response.resblocks:
+        for block in self.encoder.resblocks:
             nn.init.normal_(block.attn.in_proj_weight, std=attn_std)
             nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
             nn.init.normal_(block.mlp.c_fc.weight, std=fc_std)
             nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
 
-        nn.init.normal_(self.r_text_projection, std=self.query.width ** -0.5)
-    def encode_query(self, text):
+        nn.init.normal_(self.text_projection, std=self.encoder.width ** -0.5)
+    def encode_text(self, text):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
-        x = x + self.q_positional_embedding.type(self.dtype)
+        x = x + self.positional_embedding.type(self.dtype)
         x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.query(x)
+        x = self.encoder(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
-        x = self.q_ln_final(x).type(self.dtype)
-        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.q_text_projection
+        x = self.ln_final(x).type(self.dtype)
+        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def encode_response(self, text):
-        x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
-        x = x + self.r_positional_embedding.type(self.dtype)
-        x = x.permute(1, 0, 2)  # NLD -> LND
-        x = self.response(x)
-        x = x.permute(1, 0, 2)  # LND -> NLD
-        x = self.r_ln_final(x).type(self.dtype)
-        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.r_text_projection
-
-        return x
-    def forward(self, query, response,im):
+    def forward(self, im, captions):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        q_features =self.encode_query(query)
-        r_features =self.encode_response(response)
+        captions=torch.flatten(captions,0,1)
+        caption_features=self.encode_text(captions)
+        
         
         # normalized features
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
-        q_features = q_features / q_features.norm(dim=1, keepdim=True)
-        r_features = r_features / r_features.norm(dim=1, keepdim=True)
+        caption_features = caption_features / caption_features.norm(dim=1, keepdim=True)
+        #unflatten captions into Bx5x512
+        caption_features=caption_features.view(im.shape[0],5,self.encoder.width)
+        caption_features1=caption_features[:,0,:]
+        caption_features2=caption_features[:,1,:]
+        caption_features3=caption_features[:,2,:]
+        caption_features4=caption_features[:,3,:]
+        caption_features5=caption_features[:,4,:]
         #each of these is B x D
         #in a square we get BxB Matrix of DxD matrices for logits
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
         logs=self.logit_scale.exp()
-        imlogits=logs*torch.einsum('b...,c...,d...->bcd',image_features,q_features,r_features)
+        imlogits=logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',image_features,caption_features1,caption_features2,caption_features3,caption_features4,caption_features5)
 
-        rlogits= logs*torch.einsum('b...,c...,d...->bcd',r_features,image_features,q_features)
-
-        qlogits= logs*torch.einsum('b...,c...,d...->bcd',q_features,r_features,image_features)
-        return imlogits,rlogits,qlogits
+        logits1= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features1,caption_features2,caption_features3,caption_features4,caption_features5,image_features)
+        logits2= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features2,caption_features3,caption_features4,caption_features5,image_features,caption_features1)
+        logits3= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features3,caption_features4,caption_features5,image_features,caption_features1,caption_features2)
+        logits4= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features4,caption_features5,image_features,caption_features1,caption_features2,caption_features3)
+        logits5= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features5,image_features,caption_features1,caption_features2,caption_features3,caption_features4)
+        return imlogits,logits1,logits2,logits3,logits4,logits5
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        dims=batch[0].shape[0]
-        labels=torch.diag_embed(torch.arange(dims,dtype=torch.long,device=self.device)-self.lossq.ignore_index)+self.lossq.ignore_index
+        labels=self.labels.clone().to(self.device,non_blocking=True)
 
-        query ,response,im= batch[0],batch[1],batch[2]
-        imlogits,rlogits,qlogits=self(query,response,im)
- 
-        lossq = self.lossq(qlogits, labels)
-        lossr = self.lossr(rlogits, labels)
-        lossim=self.lossim(imlogits, labels)
-        loss = lossq+lossr+lossim
-        loss=loss/3
+        im,captions= batch[0],batch[1]
+        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions)
+        loss1 = self.loss1(logits1, labels)
+        loss2 = self.loss2(logits2, labels)
+        loss3 = self.loss3(logits3, labels)
+        loss4 = self.loss4(logits4, labels)
+        loss5 = self.loss5(logits5, labels)
+        lossim = self.lossim(imlogits, labels)
+
+        loss = lossim+loss1+loss2+loss3+loss4+loss5
+        loss=loss/6
         loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True)
+        self.log('train_loss', loss)
         return {"loss": loss}
 
             
@@ -192,16 +177,14 @@ def train(config={
         "batchsize":64,
         "learning_rate":2e-4,
         "precision":16,
-    },dir=".",devices="auto",accelerator="auto"):
+    },dir="/Data",devices="auto",accelerator="auto"):
     #Load Data Module and begin training
-    from BuildSpainDataSet import TriModal
-    with wandb.init( project="NDIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
-        model=LightningCLIPModule(  useclip_en=config["useclip_en"],
-                                    useclip_im=config["useclip_im"],
-                                    learning_rate = config["learning_rate"],
+    from BuildSpainDataSet import COCODataModule
+    with wandb.init( project="6DIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
+        model=LightningCLIPModule(  learning_rate = config["learning_rate"],
+                                    train_batch_size=config["batchsize"],
                                     adam_epsilon = 1e-8)
-        Dataset=TriModal(dir=os.path.join(dir,"MS-COCO-ES"),transform=model.preprocess)
-        data_module = torch.utils.data.DataLoader(Dataset,batch_size=config["batchsize"],shuffle=True,num_workers=4,pin_memory=True,drop_last=True,prefetch_factor=2)
+        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"],T=model.preprocess)
         callbacks=[
             TQDMProgressBar()
         ]
@@ -217,33 +200,12 @@ def train(config={
         )
         
         
-        trainer.fit(model,data_module)
+        trainer.fit(model,Dataset)
 
 if __name__ == '__main__':
     config={
-        "useclip_im":False,       #[True,False]
-        "useclip_en":False,     #[True,False]
-        "batchsize":32,         #[1,4,8,16,32,64]
+        "batchsize":12,         #[1,4,8,16,32,64]
         "learning_rate":2e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":16,         #[32,16,'bf16']
     }
     train(config)
-
-
-    #Experiment plan:
-    ###BENCHMARKS###
-    #1. Train EN-ES on MS-COCO-ES
-    #2. Train ES+IM on MS-COCO-ES
-    #3. Train IM+EN solely on MS-COCO-ES
-    ## For Generative model 
-    #1. Train ES with pretraiined EN+IM on MS-COCO-ES
-
-
-    #TESTING
-    #1. Train EN-ES-IM on MS-COCO-ES
-    #2. Variance of batch size
-    #3. Variance of learning rate
-    #EVAL
-    ##With EN_ES embeddings, with IM_ES embeddings, with EN_IM embeddings, with IM_EN_ES embeddings
-    #1. train t5 decoder on MS-COCO-ES -EN ->Encode->Decode->Compare to MS-COCO-ES-EN 
-    #2. Test on MS-COCO-ES -ES +DECODER on ES->Encode->Decode->Compare to MS-COCO-ES-EN
