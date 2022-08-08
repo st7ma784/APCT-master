@@ -136,12 +136,18 @@ class LightningCLIPModule(LightningModule):
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
         logs=self.logit_scale.exp()
         imlogits=logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',image_features,caption_features1,caption_features2,caption_features3,caption_features4,caption_features5)
+        
+        # logits1= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features1,caption_features2,caption_features3,caption_features4,caption_features5,image_features)
+        # logits2= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features2,caption_features3,caption_features4,caption_features5,image_features,caption_features1)
+        # logits3= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features3,caption_features4,caption_features5,image_features,caption_features1,caption_features2)
+        # logits4= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features4,caption_features5,image_features,caption_features1,caption_features2,caption_features3)
+        # logits5= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features5,image_features,caption_features1,caption_features2,caption_features3,caption_features4)
+        logits1=imlogits.permute(1,2,3,4,5,0)
+        logits2=imlogits.permute(2,3,4,5,0,1)
+        logits3=imlogits.permute(3,4,5,0,1,2)
+        logits4=imlogits.permute(4,5,0,1,2,3)
+        logits5=imlogits.permute(5,0,1,2,3,4)
 
-        logits1= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features1,caption_features2,caption_features3,caption_features4,caption_features5,image_features)
-        logits2= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features2,caption_features3,caption_features4,caption_features5,image_features,caption_features1)
-        logits3= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features3,caption_features4,caption_features5,image_features,caption_features1,caption_features2)
-        logits4= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features4,caption_features5,image_features,caption_features1,caption_features2,caption_features3)
-        logits5= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features5,image_features,caption_features1,caption_features2,caption_features3,caption_features4)
         return imlogits,logits1,logits2,logits3,logits4,logits5
 
 
@@ -172,9 +178,7 @@ class LightningCLIPModule(LightningModule):
         return [optimizer]
 import wandb,os
 def train(config={
-        "useclip_im":True,
-        "useclip_en":False,
-        "batchsize":64,
+        "batchsize":16,
         "learning_rate":2e-4,
         "precision":16,
     },dir="/Data",devices="auto",accelerator="auto"):
