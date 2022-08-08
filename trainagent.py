@@ -10,7 +10,7 @@ import wandb
 from functools import partial
 wandb.login()
 parser = argparse.ArgumentParser()
-parser.add_argument("--sweep_id", default="craeo4fq",nargs="?", type=str)
+parser.add_argument("--sweep_id", default="2kt9gdh0",nargs="?", type=str)
 parser.add_argument("--data_dir", default="/Data",nargs="?", type=str)
 parser.add_argument("--devices", default="auto",nargs="?", type=str)
 parser.add_argument("--accelerator", default="auto",nargs="?", type=str)

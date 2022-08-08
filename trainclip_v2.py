@@ -209,7 +209,7 @@ def train(config={
 if __name__ == '__main__':
     config={
         "batchsize":12,         #[1,4,8,16,32,64]
-        "learning_rate":2e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+        "learning_rate":4e-6,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":16,         #[32,16,'bf16']
     }
     train(config)

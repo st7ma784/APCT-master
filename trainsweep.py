@@ -12,13 +12,7 @@ if __name__=="__main__":
                 'values':[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
             },
             'batch_size': {
-                'values': [1,4,8,12,16]
-            },
-            'useclip_im': {
-                'values': [True,False]
-            },
-            'useclip_en': {
-                'values': [True,False]
+                'values': [1,4,8,12]
             },
             'precision': {
                 'values': [32,16,'bf16']
