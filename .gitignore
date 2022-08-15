@@ -132,3 +132,4 @@ dmypy.json
 lightning_logs
 lightning_logs/**
 NDIMContrSweep/
+6DIMContrSweep/

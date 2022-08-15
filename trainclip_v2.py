@@ -1,5 +1,4 @@
 
-from re import M
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn
@@ -114,23 +113,29 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def forward(self, im, captions):
+    def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        captions=torch.flatten(captions,0,1)
-        caption_features=self.encode_text(captions)
-        
-        
-        # normalized features
         image_features = image_features / image_features.norm(dim=1, keepdim=True)
-        caption_features = caption_features / caption_features.norm(dim=1, keepdim=True)
-        #unflatten captions into Bx5x512
-        caption_features=caption_features.view(im.shape[0],5,self.encoder.width)
-        caption_features1=caption_features[:,0,:]
-        caption_features2=caption_features[:,1,:]
-        caption_features3=caption_features[:,2,:]
-        caption_features4=caption_features[:,3,:]
-        caption_features5=caption_features[:,4,:]
+
+        caption_features1=self.encode_text(captions1)
+        caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
+
+        caption_features2=self.encode_text(captions2)
+        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
+
+        caption_features3=self.encode_text(captions3)
+        caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
+
+        caption_features4=self.encode_text(captions4)
+        caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
+
+        caption_features5=self.encode_text(captions5)
+        caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
+
+
+        # normalized features
+
         #each of these is B x D
         #in a square we get BxB Matrix of DxD matrices for logits
         #for 3 features we get BxBxB matrix of DxDxD matrices for logits
@@ -155,13 +160,14 @@ class LightningCLIPModule(LightningModule):
         labels=self.labels.clone().to(self.device,non_blocking=True)
 
         im,captions= batch[0],batch[1]
-        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions)
-        loss1 = self.loss1(logits1, labels)
-        loss2 = self.loss2(logits2, labels)
-        loss3 = self.loss3(logits3, labels)
-        loss4 = self.loss4(logits4, labels)
-        loss5 = self.loss5(logits5, labels)
-        lossim = self.lossim(imlogits, labels)
+        #print(captions.shape)#Batchx 5 Capions x Length
+        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+        loss1 = self.loss1(logits1, labels, reduction='mean')
+        loss2 = self.loss2(logits2, labels, reduction='mean')
+        loss3 = self.loss3(logits3, labels  , reduction='mean')
+        loss4 = self.loss4(logits4, labels, reduction='mean')
+        loss5 = self.loss5(logits5, labels, reduction='mean')
+        lossim = self.lossim(imlogits, labels, reduction='mean')
 
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
@@ -208,8 +214,8 @@ def train(config={
 
 if __name__ == '__main__':
     config={
-        "batchsize":12,         #[1,4,8,16,32,64]
-        "learning_rate":4e-6,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
-        "precision":16,         #[32,16,'bf16']
+        "batchsize":4,         #[1,4,8,16,32,64]
+        "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+        "precision":'bf16',         #[32,16,'bf16']
     }
     train(config)
