@@ -215,7 +215,7 @@ class COCODataModule(pl.LightningDataModule):
                 
                 print("annfile:",annfile)
                 print("dir:",dir)
-                TestSets.append(CocoCaptions(root=dir, annFile=annfile, transform=self.T))
+                TestSets.append(COCODataset(root=dir, annFile=annfile, transform=self.T))
             self.test = ConcatDataset(TestSets)
 
 
