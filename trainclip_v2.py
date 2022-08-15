@@ -56,12 +56,12 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.lossim=torch.nn.CrossEntropyLoss()
-        self.loss1=torch.nn.CrossEntropyLoss()
-        self.loss2=torch.nn.CrossEntropyLoss()
-        self.loss3=torch.nn.CrossEntropyLoss()
-        self.loss4=torch.nn.CrossEntropyLoss()
-        self.loss5=torch.nn.CrossEntropyLoss()
+        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
         self.vocab_size = vocab_size
 
         self.vocab_size = vocab_size
@@ -162,12 +162,12 @@ class LightningCLIPModule(LightningModule):
         im,captions= batch[0],batch[1]
         #print(captions.shape)#Batchx 5 Capions x Length
         imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        loss1 = self.loss1(logits1, labels, reduction='mean')
-        loss2 = self.loss2(logits2, labels, reduction='mean')
-        loss3 = self.loss3(logits3, labels  , reduction='mean')
-        loss4 = self.loss4(logits4, labels, reduction='mean')
-        loss5 = self.loss5(logits5, labels, reduction='mean')
-        lossim = self.lossim(imlogits, labels, reduction='mean')
+        loss1 = self.loss1(logits1, labels)
+        loss2 = self.loss2(logits2, labels)
+        loss3 = self.loss3(logits3, labels)
+        loss4 = self.loss4(logits4, labels)
+        loss5 = self.loss5(logits5, labels)
+        lossim = self.lossim(imlogits, labels)
 
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
@@ -214,7 +214,7 @@ def train(config={
 
 if __name__ == '__main__':
     config={
-        "batchsize":4,         #[1,4,8,16,32,64]
+        "batchsize":10,         #[1,4,8,16,32,64]
         "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
