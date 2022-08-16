@@ -10,13 +10,11 @@ from torchvision.datasets import CocoCaptions
 T= transforms.Compose([transforms.Resize((224,224),interpolation=Image.NEAREST),transforms.ToTensor()])
 from transformers import AutoTokenizer
 import time
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-tokenizer= AutoTokenizer.from_pretrained("gpt2")
-tokenizer.vocab["</s>"] = tokenizer.vocab_size -1
-tokenizer.pad_token = tokenizer.eos_token 
+
 class COCODataset(CocoCaptions):
-    def __init__(self, root, annFile, *args, **kwargs):
+    def __init__(self, root, annFile, tokenizer, *args, **kwargs):
         print('Loading COCO dataset')
+        self.tokenizer=tokenizer
         #check if root and annfile exist
         if not os.path.exists(root):
             print('Error: root directory does not exist: {}'.format(root))
@@ -33,7 +31,7 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', index)
             return None
-        target=torch.cat([tokenizer(
+        target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
                     add_special_tokens = True, # Add '[CLS]' and '[SEP]'
                     max_length = 77,           # Pad & truncate all sentences.
@@ -43,19 +41,6 @@ class COCODataset(CocoCaptions):
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
         return img,target
-
-def getCOCODsets(SETTINGS,split:str='train',transform=T):
-    datasets=[] 
-    for year in SETTINGS['COCOVersions']:
-        SET=split+str(year)
-        Dataroot=SETTINGS['data_dir'+SET]
-        COCOData=COCODataset(root=Dataroot, annFile=SETTINGS['Cocoannotations'+SET],transform=transform)
-        datasets.append(COCOData)
-    return datasets
-    
-def getAllCOCO(SETTINGS,split:str='train',transform=T):
-   
-    return ConcatDataset(getCOCODsets(SETTINGS,split,transform=transform))
 
 
 
@@ -181,6 +166,9 @@ class COCODataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         '''called on each GPU separately - stage defines if we are at fit or test step'''
         print("Entered COCO datasetup")
+        tokenizer=AutoTokenizer.from_pretrained("gpt2")
+        tokenizer.vocab["</s>"] = tokenizer.vocab_size -1
+        tokenizer.pad_token = tokenizer.eos_token 
         if stage == 'fit' or stage is None:
             TrainSets=[]
             for version in self.splits['train']:
@@ -189,7 +177,7 @@ class COCODataModule(pl.LightningDataModule):
                 dir=os.path.join(self.data_dir,version)
 
                 #time.sleep(2)
-                dset=COCODataset(root=dir, annFile=annfile, transform=self.T)
+                dset=COCODataset(root=dir, annFile=annfile, tokenizer=tokenizer, transform=self.T)
                 assert(len(dset)>0)
                 TrainSets.append(dset)
             self.train = ConcatDataset(TrainSets)
@@ -202,7 +190,7 @@ class COCODataModule(pl.LightningDataModule):
                 dir=os.path.join(self.data_dir,version)
                 print("annfile:",annfile)
                 print("dir:",dir)
-                ValSets.append(COCODataset(root=dir, annFile=annfile, transform=self.T))
+                ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=tokenizer, transform=self.T))
             self.val = ConcatDataset(ValSets)
             # torch.save(self.train,"train.pt")
             # torch.save(self.val,"val.pt")    
@@ -215,7 +203,7 @@ class COCODataModule(pl.LightningDataModule):
                 
                 print("annfile:",annfile)
                 print("dir:",dir)
-                TestSets.append(COCODataset(root=dir, annFile=annfile, transform=self.T))
+                TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=tokenizer, transform=self.T))
             self.test = ConcatDataset(TestSets)
 
 

@@ -172,7 +172,7 @@ class LightningCLIPModule(LightningModule):
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
-        self.log('train_loss', loss)
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False)
         return {"loss": loss}
 
             
@@ -190,31 +190,31 @@ def train(config={
     },dir="/Data",devices="auto",accelerator="auto"):
     #Load Data Module and begin training
     from BuildSpainDataSet import COCODataModule
-    with wandb.init( project="6DIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
-        model=LightningCLIPModule(  learning_rate = config["learning_rate"],
+
+    #with wandb.init( project="6DIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
+    model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batchsize"],
                                     adam_epsilon = 1e-8)
-        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"],T=model.preprocess)
-        callbacks=[
-            TQDMProgressBar()
-        ]
-        logtool= pytorch_lightning.loggers.WandbLogger(experiment=run)
-        trainer=pytorch_lightning.Trainer(
+    Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"],T=model.preprocess)
+
+    logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config)
+    trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
             max_epochs=100,
+            profiler="advanced",
             logger=logtool,
-            callbacks=callbacks,
+            #callbacks=callbacks,
             gradient_clip_val=0.25,
             precision=config["precision"]
-        )
+    )
         
         
-        trainer.fit(model,Dataset)
+    trainer.fit(model,Dataset)
 
 if __name__ == '__main__':
     config={
-        "batchsize":10,         #[1,4,8,16,32,64]
+        "batchsize":13,         #[1,4,8,16,32,64]
         "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
