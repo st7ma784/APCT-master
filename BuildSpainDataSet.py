@@ -24,6 +24,7 @@ class COCODataset(CocoCaptions):
             return None
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
+        self.ids=self.coco.getImgIds()
     def __getitem__(self, index: int):
         try:
             img, target= super().__getitem__(index)
@@ -203,7 +204,7 @@ class COCODataModule(pl.LightningDataModule):
                 
                 print("annfile:",annfile)
                 print("dir:",dir)
-                TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=tokenizer, transform=self.T))
+                TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=self.tokenizer, transform=self.T))
             self.test = ConcatDataset(TestSets)
 
 
