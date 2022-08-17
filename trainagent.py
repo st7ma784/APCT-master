@@ -26,6 +26,6 @@ preprocess=Compose([
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
         ])
-Dataset=COCODataModule(Cache_dir=dir,T=preprocess)
+Dataset=COCODataModule(Cache_dir=p.data_dir,T=preprocess)
 train=partial(train,dir=p.data_dir,devices=p.devices, accelerator=p.accelerator,Dataset=None)
 wandb.agent(sweep_id=p.sweep_id, project="6DimContrSweep", entity="st7ma784",function=train)
