@@ -61,33 +61,21 @@ class COCODataModule(pl.LightningDataModule):
         self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
         self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
         self.tokenizer.pad_token = self.tokenizer.eos_token 
-    def train_dataloader(self):
-        if not hasattr(self, 'train'):
-            #check if "espretrain.pt") exists in the directory
-            if os.path.exists("train.pt"):
-                self.train
-            else:
-                self.download_data()
-            
-        return torch.utils.data.DataLoader(self.train, batch_size=self.batch_size, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
-    def val_dataloader(self):
-        if not hasattr(self, 'val'):
-            #check if esprevalidation.pt exists in the directory
-            if os.path.exists("val.pt"):
-                self.val_dataset=torch.load("val.pt")
-            else:
-                self.download_data()
-        return torch.utils.data.DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
-    def test_dataloader(self):
-        if not hasattr(self, 'test'):
-            #check for espretest.pt in the directory
-            if os.path.exists("test.pt"):
-                self.test=torch.load("test.pt")
-            else:
+    def train_dataloader(self, B=None):
+        if B is None:
+            B=self.batch_size 
+        return torch.utils.data.DataLoader(self.train, batch_size=B, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
+    def val_dataloader(self, B=None):
+        if B is None:
+            B=self.batch_size
+       
+        return torch.utils.data.DataLoader(self.val_dataset, batch_size=B, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
+    def test_dataloader(self,B=None):
+        if B is None:
+            B=self.batch_size
 
-                self.download_data()
 
-        return torch.utils.data.DataLoader(self.test, batch_size=self.batch_size, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
+        return torch.utils.data.DataLoader(self.test, batch_size=B, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
     def prepare_data(self):
         '''called only once and on 1 GPU'''
         # # download data
@@ -180,7 +168,7 @@ class COCODataModule(pl.LightningDataModule):
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
                 print("dset:",dset.__dir__())
-                
+
                 assert(len(dset)>0)
                 TrainSets.append(dset)
             self.train = ConcatDataset(TrainSets)
