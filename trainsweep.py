@@ -12,7 +12,7 @@ if __name__=="__main__":
                 'values':[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
             },
             'batch_size': {
-                'values': [2,4,8,10,12]
+                'values': [2,4,8,10,12,24,48]
             },
             'precision': {
                 'values': [32,16]
