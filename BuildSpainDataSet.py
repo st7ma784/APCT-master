@@ -16,9 +16,9 @@ class COCODataset(CocoCaptions):
         print('Loading COCO dataset')
         self.tokenizer=tokenizer
         #check if root and annfile exist
-        assert(os.path.exists(root))
+        assert(os.path.exists(root),'root does not exist')
         #print('Error: root directory does not exist: {}'.format(root))
-        assert(os.path.exists(annFile))
+        assert(os.path.exists(annFile),'annFile does not exist')
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
