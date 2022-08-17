@@ -9,7 +9,6 @@
 source /etc/profile
 module add anaconda3/wmlce
 source activate $global_storage/conda4
-modelcache=$global_storage/data/pretraining
 module add git
 cd $global_scratch
 git clone https://github.com/carlosGarciaHe/MS-COCO-ES.git
