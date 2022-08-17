@@ -24,7 +24,7 @@ class COCODataset(CocoCaptions):
             return None
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
-        self.ids=self.coco.getImgIds()
+        print(self.ids)
     def __getitem__(self, index: int):
         try:
             img, target= super().__getitem__(index)
