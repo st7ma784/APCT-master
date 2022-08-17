@@ -16,12 +16,10 @@ class COCODataset(CocoCaptions):
         print('Loading COCO dataset')
         self.tokenizer=tokenizer
         #check if root and annfile exist
-        if not os.path.exists(root):
-            print('Error: root directory does not exist: {}'.format(root))
-            return None
-        if not os.path.exists(annFile):
-            print('Error: annFile does not exist: {}'.format(annFile))
-            return None
+        assert(os.path.exists(root))
+        #print('Error: root directory does not exist: {}'.format(root))
+        assert(os.path.exists(annFile))
+        #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
         print(self.ids)
