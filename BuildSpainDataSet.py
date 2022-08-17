@@ -179,6 +179,8 @@ class COCODataModule(pl.LightningDataModule):
 
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
+                print("dset:",dset.__dir__())
+                
                 assert(len(dset)>0)
                 TrainSets.append(dset)
             self.train = ConcatDataset(TrainSets)
