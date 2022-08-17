@@ -57,7 +57,9 @@ class COCODataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.T=T
         self.splits={"train":[],"val":[],"test":[]}
-        
+        self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
+        self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
+        self.tokenizer.pad_token = self.tokenizer.eos_token 
     def train_dataloader(self):
         if not hasattr(self, 'train'):
             #check if "espretrain.pt") exists in the directory
@@ -166,9 +168,7 @@ class COCODataModule(pl.LightningDataModule):
     def setup(self, stage=None):
         '''called on each GPU separately - stage defines if we are at fit or test step'''
         print("Entered COCO datasetup")
-        tokenizer=AutoTokenizer.from_pretrained("gpt2")
-        tokenizer.vocab["</s>"] = tokenizer.vocab_size -1
-        tokenizer.pad_token = tokenizer.eos_token 
+        
         if stage == 'fit' or stage is None:
             TrainSets=[]
             for version in self.splits['train']:
@@ -177,7 +177,7 @@ class COCODataModule(pl.LightningDataModule):
                 dir=os.path.join(self.data_dir,version)
 
                 #time.sleep(2)
-                dset=COCODataset(root=dir, annFile=annfile, tokenizer=tokenizer, transform=self.T)
+                dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
                 assert(len(dset)>0)
                 TrainSets.append(dset)
             self.train = ConcatDataset(TrainSets)
@@ -190,7 +190,7 @@ class COCODataModule(pl.LightningDataModule):
                 dir=os.path.join(self.data_dir,version)
                 print("annfile:",annfile)
                 print("dir:",dir)
-                ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=tokenizer, transform=self.T))
+                ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T))
             self.val = ConcatDataset(ValSets)
             # torch.save(self.train,"train.pt")
             # torch.save(self.val,"val.pt")    
