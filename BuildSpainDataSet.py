@@ -10,7 +10,7 @@ from torchvision.datasets import CocoCaptions
 T= transforms.Compose([transforms.Resize((224,224),interpolation=Image.NEAREST),transforms.ToTensor()])
 from transformers import AutoTokenizer
 import time
-
+from pathlib import Path
 class COCODataset(CocoCaptions):
     def __init__(self, root, annFile, tokenizer, *args, **kwargs):
         print('Loading COCO dataset')
@@ -23,9 +23,11 @@ class COCODataset(CocoCaptions):
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
         print(self.ids)
-    def __getitem__(self, index: int):
+    def __len__(self):
+        return len(self.ids)
+    def __getitem__(self, idx: int):
         try:
-            img, target= super().__getitem__(index)
+            img, target= super().__getitem__(idx)
         except Exception as e:
             print(e)
             print('Error loading image:', index)
@@ -127,30 +129,21 @@ class COCODataModule(pl.LightningDataModule):
             path = obj.get_dest()
             if obj.FileName.startswith("annotations"):
                 print("Extracting annotations")
-                print("path:",path)
-
-                with zipfile.ZipFile(path, 'r') as zip_ref:
-                    try:
-                        zip_ref.extractall(self.data_dir)
-                    except:
-                        print("Error extracting annotations")
-                        print("path:",path)
-                        print("ann_dir:",self.ann_dir)
-            #wget.download("http://images.cocodataset.org/zips/train2014.zip",out=self.cocodir)
             else:
                 print("Extracting images")
-                print("path:",path)
-                if obj.FileName.endswith(".zip"):
-                    print("Extracting zip")
-                    with zipfile.ZipFile(path, 'r') as zip_ref:
-                        try:
-                            zip_ref.extractall(self.data_dir)
-                        except:
-                            print("Error extracting images")
-                            print("path:",path)
-                            print("data_dir:",self.data_dir)
-                print("Extracted: %s" % path)
-
+            print("path:",path)
+            with zipfile.ZipFile(path, 'r') as zip_ref:
+                try:
+                    zip_ref.extractall(self.data_dir)
+                except:
+                    print("Error extracting annotations")
+                    print("path:",path)
+                    print("ann_dir:",self.ann_dir)
+                #wget.download("http://images.cocodataset.org/zips/train2014.zip",out=self.cocodir)
+                #walk over output to avoid HEC cleanup
+                for root, dirs, files in os.walk(zip_ref.namelist()[0]):
+                    for file in files:
+                        Path(os.path.join(root, file)).touch()
  
     def setup(self, stage=None):
         '''called on each GPU separately - stage defines if we are at fit or test step'''
