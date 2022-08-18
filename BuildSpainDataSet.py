@@ -65,6 +65,7 @@ class COCODataModule(pl.LightningDataModule):
         self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
         self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
         self.tokenizer.pad_token = self.tokenizer.eos_token 
+        self.prepare_data()
     def train_dataloader(self, B=None):
         if B is None:
             B=self.batch_size 
@@ -116,11 +117,10 @@ class COCODataModule(pl.LightningDataModule):
             elif name.startswith("test"):
                 self.splits['test'].append(name)
 
-            if not os.path.exists(obj.get_dest()):
 
-                objs.append(obj)#SmartDL(url, self.data_dir,)
-                obj.start(blocking=False)
-                print("obj Path ",obj.get_dest())
+            objs.append(obj)#SmartDL(url, self.data_dir,)
+            obj.start(blocking=False)
+            print("obj Path ",obj.get_dest())
         for obj in objs:
             while not obj.isFinished():
                 #print("Speed: %s" % obj.get_speed(human=True))
