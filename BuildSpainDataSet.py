@@ -30,7 +30,7 @@ class COCODataset(CocoCaptions):
             img, target= super().__getitem__(idx)
         except Exception as e:
             print(e)
-            print('Error loading image:', index)
+            print('Error loading image:', idx)
             return None
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
