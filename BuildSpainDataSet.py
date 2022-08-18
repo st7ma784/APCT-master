@@ -135,18 +135,14 @@ class COCODataModule(pl.LightningDataModule):
             else:
                 print("Extracting images")
             print("path:",path)
-            with zipfile.ZipFile(path, 'r') as zip_ref:
-                try:
+            if path.endswith(".zip"):
+                print("Extracting zip")
+                with zipfile.ZipFile(path, 'r') as zip_ref:
                     zip_ref.extractall(self.data_dir)
-                except:
-                    print("Error extracting annotations")
-                    print("path:",path)
-                    print("ann_dir:",self.ann_dir)
-                #wget.download("http://images.cocodataset.org/zips/train2014.zip",out=self.cocodir)
-                #walk over output to avoid HEC cleanup
-                for root, dirs, files in os.walk(zip_ref.namelist()[0]):
-                    for file in files:
-                        Path(os.path.join(root, file)).touch()
+            
+                    for root, dirs, files in os.walk(zip_ref.namelist()[0]):
+                        for file in files:
+                            Path(os.path.join(root, file)).touch()
  
     def setup(self, stage=None):
         '''called on each GPU separately - stage defines if we are at fit or test step'''
