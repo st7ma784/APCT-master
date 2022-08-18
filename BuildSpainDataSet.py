@@ -160,8 +160,9 @@ class COCODataModule(pl.LightningDataModule):
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
                 print("dset:",dset.__dir__())
 
-                assert(len(dset)>0)
-                TrainSets.append(dset)
+                if len(dset)>0:
+                    TrainSets.append(dset)
+            assert len(TrainSets)>0,"No train sets found"
             self.train = ConcatDataset(TrainSets)
 
             ValSets=[]
@@ -176,7 +177,7 @@ class COCODataModule(pl.LightningDataModule):
             self.val = ConcatDataset(ValSets)
             # torch.save(self.train,"train.pt")
             # torch.save(self.val,"val.pt")    
-        if stage == 'test' or stage is None:
+        if stage == 'test':
             TestSets=[]
             for version in self.splits['test']:
                 print("BUILDING SPLIT : ",version)
