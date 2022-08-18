@@ -22,7 +22,7 @@ class COCODataset(CocoCaptions):
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
-        print(self.ids)
+        #print(self.ids)
     def __len__(self):
         return len(self.ids)
     def __getitem__(self, idx: int):
