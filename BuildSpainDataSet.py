@@ -16,6 +16,10 @@ class COCODataset(CocoCaptions):
         print('Loading COCO dataset')
         self.tokenizer=tokenizer
         #check if root and annfile exist
+        for root, dirs, files in os.walk(root):
+                for file in files:
+                    Path(os.path.join(root, file)).touch()
+        Path(annFile).touch()
         assert(os.path.exists(root),'root does not exist')
         #print('Error: root directory does not exist: {}'.format(root))
         assert(os.path.exists(annFile),'annFile does not exist')
@@ -97,12 +101,12 @@ class COCODataModule(pl.LightningDataModule):
         for url in urls:
             print("url:",url)
             name=str(url).split('/')[-1]
-        
-            
             location=self.data_dir # if name.startswith("annotations") else self.ann_dir
             #print("Location", location) #/Data/train2014.zip
             #time.sleep(5)
             #print('Downloading',url)
+            obj=SmartDL(url,os.path.join(location,str(url).split('/')[-1]),progress_bar=False)
+            obj.FileName=name
             if name.endswith(".zip"):
                 name=name[:-4]
             if name.startswith("train"):
@@ -111,8 +115,7 @@ class COCODataModule(pl.LightningDataModule):
                 self.splits['val'].append(name)
             elif name.startswith("test"):
                 self.splits['test'].append(name)
-            obj=SmartDL(url,os.path.join(location,str(url).split('/')[-1]),progress_bar=False)
-            obj.FileName=name
+
             if not os.path.exists(obj.get_dest()):
 
                 objs.append(obj)#SmartDL(url, self.data_dir,)
