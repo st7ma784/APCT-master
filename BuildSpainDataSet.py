@@ -20,9 +20,9 @@ class COCODataset(CocoCaptions):
                 for file in files:
                     Path(os.path.join(root, file)).touch()
         Path(annFile).touch()
-        assert(os.path.exists(root),'root does not exist')
+        assert os.path.exists(root),'root does not exist'
         #print('Error: root directory does not exist: {}'.format(root))
-        assert(os.path.exists(annFile),'annFile does not exist')
+        assert os.path.exists(annFile),'annFile does not exist' 
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         print('Done')
@@ -116,11 +116,12 @@ class COCODataModule(pl.LightningDataModule):
                 self.splits['val'].append(name)
             elif name.startswith("test"):
                 self.splits['test'].append(name)
+            if not path.exists(os.path.join(location,name)):
+                objs.append(obj)
 
-
-            objs.append(obj)#SmartDL(url, self.data_dir,)
-            obj.start(blocking=False)
-            print("obj Path ",obj.get_dest())
+                #objs.append(obj)#SmartDL(url, self.data_dir,)
+                obj.start(blocking=False)
+                print("obj downloading to ",obj.get_dest())
         for obj in objs:
             while not obj.isFinished():
                 #print("Speed: %s" % obj.get_speed(human=True))
