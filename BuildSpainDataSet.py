@@ -138,8 +138,12 @@ class COCODataModule(pl.LightningDataModule):
             if path.endswith(".zip"):
                 print("Extracting zip")
                 with zipfile.ZipFile(path, 'r') as zip_ref:
-                    zip_ref.extractall(self.data_dir)
-            
+                    try:
+                        zip_ref.extractall(self.data_dir)
+                    except Exception as e:
+                        print(e)
+                        print("Error extracting zip" ,path)
+                        continue        
                     for root, dirs, files in os.walk(zip_ref.namelist()[0]):
                         for file in files:
                             Path(os.path.join(root, file)).touch()
