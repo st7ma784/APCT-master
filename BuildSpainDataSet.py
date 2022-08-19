@@ -116,7 +116,7 @@ class COCODataModule(pl.LightningDataModule):
                 self.splits['val'].append(name)
             elif name.startswith("test"):
                 self.splits['test'].append(name)
-            if not path.exists(os.path.join(location,name)):
+            if not os.path.exists(os.path.join(location,name)):
                 objs.append(obj)
 
                 #objs.append(obj)#SmartDL(url, self.data_dir,)
