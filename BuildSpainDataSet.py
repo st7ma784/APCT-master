@@ -62,7 +62,14 @@ class COCODataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.T=T
         self.splits={"train":[],"val":[],"test":[]}
-        self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
+        try: 
+            self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
+        except OSError as e:
+            from transformers import GPT2Tokenizer
+            tok = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=self.data_dir)
+            tok.save_pretrained(self.data_dir)
+        finally:
+            self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
         self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
         self.tokenizer.pad_token = self.tokenizer.eos_token 
         self.prepare_data()
