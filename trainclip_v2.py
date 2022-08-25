@@ -182,13 +182,14 @@ def train(config={
         "precision":16,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     #Load Data Module and begin training
-    from BuildSpainDataSet import COCODataModule
 
     #with wandb.init( project="6DIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batchsize"],
                                     adam_epsilon = 1e-8)
     if Dataset is None:
+        from BuildSpainDataSet import COCODataModule
+
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"])
     Dataset.batch_size=config["batchsize"]
     logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
