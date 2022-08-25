@@ -209,7 +209,7 @@ def train(config={
 
 if __name__ == '__main__':
     config={
-        "batchsize":19,         #[1,4,8,16,32,64]
+        "batchsize":19,         #[1,4,8,16,32,64] # 13 for 8GB VRAM, 19 for 24GB VRAM
         "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
