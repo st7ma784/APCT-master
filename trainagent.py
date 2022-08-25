@@ -1,14 +1,8 @@
 
-
-
-   
-   
 import wandb
 from trainclip_v2 import train
 from BuildSpainDataSet import COCODataModule
-
 import argparse
-import wandb
 from functools import partial
 wandb.login()
 parser = argparse.ArgumentParser()

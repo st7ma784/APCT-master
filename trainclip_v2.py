@@ -175,15 +175,15 @@ class LightningCLIPModule(LightningModule):
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
         return [optimizer]
-import wandb,os
+
+def wandbtrain(config,dir,devices,accelerator,Dataset=None):
+    logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
+    train(config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batchsize":16,
         "learning_rate":2e-4,
         "precision":16,
-    },dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    #Load Data Module and begin training
-
-    #with wandb.init( project="6DIMContrSweep", entity="st7ma784", job_type="train", config=config) as run:  
+    },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batchsize"],
                                     adam_epsilon = 1e-8)
@@ -192,7 +192,6 @@ def train(config={
 
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"])
     Dataset.batch_size=config["batchsize"]
-    logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
     trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
