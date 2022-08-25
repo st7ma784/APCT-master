@@ -157,7 +157,7 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=self.labels.clone().to(self.device,non_blocking=True)
+        labels=self.labels[:batch[0].shape[0]].clone().to(self.device,non_blocking=True)
 
         im,captions= batch[0],batch[1]
         #print(captions.shape)#Batchx 5 Capions x Length
