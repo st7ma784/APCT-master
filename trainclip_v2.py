@@ -162,6 +162,7 @@ class LightningCLIPModule(LightningModule):
         im,captions= batch[0],batch[1]
         #print(captions.shape)#Batchx 5 Capions x Length
         imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+        print(logits1.shape ,labels.shape)
         loss1 = self.loss1(logits1, labels)
         loss2 = self.loss2(logits2, labels)
         loss3 = self.loss3(logits3, labels)
