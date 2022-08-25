@@ -9,6 +9,13 @@ from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
 from PIL import Image
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
+prep=Compose([
+        Resize(224, interpolation=Image.BICUBIC),
+        CenterCrop(224),
+        lambda image: image.convert("RGB"),
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 useclip_en=True,
@@ -32,13 +39,7 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
-        self.preprocess=Compose([
-        Resize(224, interpolation=Image.BICUBIC),
-        CenterCrop(224),
-        lambda image: image.convert("RGB"),
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-        ])
+        self.preprocess=prep
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
