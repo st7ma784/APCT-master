@@ -71,12 +71,7 @@ class LightningCLIPModule(LightningModule):
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
-        self.labels=torch.diag_embed(torch.arange(train_batch_size,dtype=torch.long,device=self.device)-self.lossim.ignore_index)
-
-        for i in range(3):
-            self.labels=torch.diag_embed(self.labels)
-        self.labels=self.labels+self.lossim.ignore_index
-        self.labels=self.labels.to(self.device)
+       
 
 
     def build_attention_mask(self):
@@ -157,8 +152,12 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=self.labels[:batch[0].shape[0]].clone().to(self.device,non_blocking=True)
+        labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index)
 
+        for i in range(3):
+            self.labels=torch.diag_embed(self.labels)
+        self.labels=self.labels+self.lossim.ignore_index
+        #self.labels=self.labels.to(self.device)
         im,captions= batch[0],batch[1]
         #print(captions.shape)#Batchx 5 Capions x Length
         imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
