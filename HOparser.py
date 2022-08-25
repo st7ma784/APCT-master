@@ -1,11 +1,11 @@
 from test_tube import HyperOptArgumentParser
 
 class parser(HyperOptArgumentParser):
-    def __init__(self,*args):
+    def __init__(self,*args,strategy="grid_search"):
 
-        super().__init__(*args, strategy="grid_search", add_help=False) # or random search
+        super().__init__( *args,strategy=strategy, add_help=False) # or random search
         #more info at https://williamfalcon.github.io/test-tube/hyperparameter_optimization/HyperOptArgumentParser/
-
+        self.opt_list("--log_path",default="/Data",type=str,tunable=False)
         self.opt_list("--learning_rate", default=0.001, type=float, options=[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6], tunable=True)
         self.opt_list("--batchsize", default=8, type=float, options=[1,2,4,8,12,16, 32, 64], tunable=True)
         self.opt_list("--precision", default=16, options=[32,16,'bf16'], tunable=False)
