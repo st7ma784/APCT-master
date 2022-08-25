@@ -155,7 +155,7 @@ class LightningCLIPModule(LightningModule):
         labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index)
 
         for i in range(3):
-            self.labels=torch.diag_embed(labels)
+            labels=torch.diag_embed(labels)
         labels=labels+self.lossim.ignore_index
         #self.labels=self.labels.to(self.device)
         im,captions= batch[0],batch[1]
