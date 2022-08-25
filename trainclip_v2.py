@@ -12,7 +12,7 @@ from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normal
 prep=Compose([
         Resize(224, interpolation=Image.BICUBIC),
         CenterCrop(224),
-        lambda image: image.convert("RGB"),
+        #Note: the standard  lambda function here is not supported by pytorch lightning
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
         ])
@@ -206,7 +206,7 @@ def train(config={
             max_epochs=100,
             #profiler="advanced",
             logger=logtool,
-            strategy="dp",
+            #strategy="dp",
             #callbacks=callbacks,
             gradient_clip_val=0.25,
             precision=config["precision"]
