@@ -8,14 +8,7 @@ from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
 from PIL import Image
-from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
-prep=Compose([
-        Resize(224, interpolation=Image.BICUBIC),
-        CenterCrop(224),
-        #Note: the standard  lambda function here is not supported by pytorch lightning
-        ToTensor(),
-        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
-        ])
+
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 useclip_en=True,
@@ -39,7 +32,6 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
-        self.preprocess=prep
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
@@ -197,7 +189,7 @@ def train(config={
                                     train_batch_size=config["batchsize"],
                                     adam_epsilon = 1e-8)
     if Dataset is None:
-        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"],T=model.preprocess)
+        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"])
     Dataset.batch_size=config["batchsize"]
     logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
     trainer=pytorch_lightning.Trainer(

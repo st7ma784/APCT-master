@@ -7,6 +7,14 @@ from pySmartDL import SmartDL
 import pytorch_lightning as pl
 from torch.utils.data import ConcatDataset
 from torchvision.datasets import CocoCaptions
+from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
+prep=Compose([
+        Resize(224, interpolation=Image.BICUBIC),
+        CenterCrop(224),
+        #Note: the standard  lambda function here is not supported by pytorch lightning
+        ToTensor(),
+        Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
+        ])
 T= transforms.Compose([transforms.Resize((224,224),interpolation=Image.NEAREST),transforms.ToTensor()])
 from transformers import AutoTokenizer
 import time
@@ -45,7 +53,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img.convert("RGB"),target
+        return img,target
 
 
 
@@ -55,7 +63,7 @@ class COCODataset(CocoCaptions):
 
 class COCODataModule(pl.LightningDataModule):
 
-    def __init__(self, Cache_dir='./', T=None, batch_size=256):
+    def __init__(self, Cache_dir='./', T=prep, batch_size=256):
         super().__init__()
         self.data_dir = Cache_dir
         self.ann_dir=os.path.join(self.data_dir,"annotations")
