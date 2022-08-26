@@ -210,10 +210,11 @@ def train(config={
             gradient_clip_val=0.25,
             precision=config["precision"]
     )
+    if config["batch_size"] !=1:
         
-        
-    trainer.fit(model,Dataset)
-
+        trainer.fit(model,Dataset)
+    else:
+        return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
         "batchsize":19,         #[1,4,8,16,32,64] # 13 for 8GB VRAM, 19 for 24GB VRAM
