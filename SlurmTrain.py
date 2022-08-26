@@ -44,7 +44,8 @@ if __name__ == '__main__':
         cmd='partition', value='gpu', comment='request gpu partition on Bede')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
-
+    print(cluster.__dir__())
+    
     cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
