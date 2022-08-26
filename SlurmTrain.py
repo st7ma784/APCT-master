@@ -44,10 +44,10 @@ if __name__ == '__main__':
         cmd='partition', value='gpu', comment='request gpu partition on Bede')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
-    print(cluster.__dir__())
+    #print(cluster.__dir__())
     
     cluster.per_experiment_nb_gpus = 4
-    cluster.per_experiment_nb_nodes = 2
+    cluster.per_experiment_nb_nodes = 1
     #cluster.gpu_type = '1080ti'
 
     # we'll request 100GB of memory per node
@@ -59,6 +59,6 @@ if __name__ == '__main__':
     # 1 minute before walltime is up, SlurmCluster will launch a continuation job and kill this job.
     # you must provide your own loading and saving function which the cluster object will call
     cluster.minutes_to_checkpoint_before_walltime = 1
-    print(cluster.__dir__())
+    #print(cluster.__dir__())
     # run the models on the cluster
-    #cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='second_wandb_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster(train, nb_trials=2, job_name='second_wandb_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
