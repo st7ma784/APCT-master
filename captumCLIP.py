@@ -1,4 +1,5 @@
 
+from email.policy import default
 import numpy as np
 import torch
 
@@ -149,24 +150,23 @@ import torch.nn
 import torchvision.transforms as transforms
 
 
-from captum.attr import AttributionVisualizer, Batch
-from captum.attr.attr_vis.features import ImageFeature, TextFeature
+from captum.insights import AttributionVisualizer, Batch
+from captum.insights.attr_vis.features import ImageFeature, TextFeature
 def get_classes():
     return texts
 
 def baseline_func(input):
     return input * 0
 
+from torch.utils.data import default_collate
 
 def formatted_data_iter():
-    dataset = torch.utils.data.TensorDataset(image_input,text_tokens)
-    dataloader = iter(
-        torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=False, num_workers=2)
-    )
-    while True:
-        inputs = next(dataloader)
-        yield Batch(inputs=inputs,labels=torch.arange(4))
-
+    # dataset = torch.utils.data.TensorDataset(image_input)
+    # loader = torch.utils.data.DataLoader(dataset, batch_size=4, shuffle=False, collate_fn=default_collate)
+    # dataset2 = torch.utils.data.TensorDataset(text_tokens)
+    # loader2 = torch.utils.data.DataLoader(dataset2, batch_size=4, shuffle=False, collate_fn=default_collate)
+    yield Batch(inputs=(image_input,text_tokens.to(dtype=torch.long)),labels=torch.arange(8))
+    
 normalize = transforms.Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
 from captum.attr import TokenReferenceBase, configure_interpretable_embedding_layer, remove_interpretable_embedding_layer
 
@@ -188,11 +188,11 @@ visualizer = AttributionVisualizer(
         ImageFeature(
             "Photo",
             baseline_transforms=[baseline_func],
-            input_transforms=[preprocess],
+            input_transforms=[],
         ),
         TextFeature(
         "Question",
-        input_transforms=[input_text_transform], 
+        input_transforms=[], #input_text_transform
         baseline_transforms=[baseline_text],
         visualization_transform=decoder.decode, #detokenize
     ),
@@ -201,5 +201,7 @@ visualizer = AttributionVisualizer(
 )
 
 
-visualizer.serve()
+visualizer.render()
+
+visualizer.visualize()
 

@@ -1,9 +1,9 @@
 from test_tube import HyperOptArgumentParser
 
 class parser(HyperOptArgumentParser):
-    def __init__(self,*args):
+    def __init__(self,strategy="random_search",*args):
 
-        super().__init__(*args, strategy="grid_search", add_help=False) # or random search
+        super().__init__(*args, strategy=strategy, add_help=False) # or random search
         #more info at https://williamfalcon.github.io/test-tube/hyperparameter_optimization/HyperOptArgumentParser/
 
         self.opt_list("--learning_rate", default=0.001, type=float, options=[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6], tunable=True)
