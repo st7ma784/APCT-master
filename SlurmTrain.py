@@ -37,8 +37,8 @@ if __name__ == '__main__':
     # #comment
     # #SBATCH --cmd=value
     # ############
-    cluster.add_slurm_cmd(
-        cmd='cpus-per-task', value='32', comment='CPUS per task.')
+    #cluster.add_slurm_cmd(
+    #    cmd='cpus-per-task', value='32', comment='CPUS per task.')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
     cluster.per_experiment_nb_gpus = 4
@@ -56,4 +56,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
 
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_cpu(train, nb_trials=5, job_name='first_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_gpu(train, nb_trials=5, job_name='first_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
