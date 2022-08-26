@@ -10,9 +10,10 @@ from pytorch_lightning.callbacks import TQDMProgressBar
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
+                
+                learning_rate,
                 useclip_en=True,
                 useclip_im=True,
-                learning_rate: float = 2e-4,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
                 weight_decay: float = 0.0,
@@ -176,15 +177,15 @@ class LightningCLIPModule(LightningModule):
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
         return [optimizer]
+import wandb
+def wandbtrain(config,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+    with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",save_dir=dir,config=config) as run:
 
-def wandbtrain(config={
-        "batchsize":16,
-        "learning_rate":2e-4,
-        "precision":16,
-    },dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
-    print(logtool.__dir__())
-    train(logtool.experiment.config,dir,devices,accelerator,Dataset,logtool)
+        logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        print(logtool.__dir__())
+        config=run.experiment.config
+        print("WANDB CONFIG",config)
+        train(config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batchsize":16,
         "learning_rate":2e-4,

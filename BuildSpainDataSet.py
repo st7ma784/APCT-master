@@ -21,7 +21,7 @@ import time
 from pathlib import Path
 class COCODataset(CocoCaptions):
     def __init__(self, root, annFile, tokenizer, *args, **kwargs):
-        print('Loading COCO dataset')
+        #print('Loading COCO dataset')
         self.tokenizer=tokenizer
         #check if root and annfile exist
         for root, dirs, files in os.walk(root):
@@ -33,7 +33,7 @@ class COCODataset(CocoCaptions):
         assert os.path.exists(annFile),'annFile does not exist' 
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
-        print('Done')
+        #print('Done')
         #print(self.ids)
     def __len__(self):
         return len(self.ids)
@@ -115,7 +115,7 @@ class COCODataModule(pl.LightningDataModule):
 
         objs=[]
         for url in urls:
-            print("url:",url)
+            #print("url:",url)
             name=str(url).split('/')[-1]
             location=self.data_dir # if name.startswith("annotations") else self.ann_dir
             #print("Location", location) #/Data/train2014.zip
@@ -136,23 +136,23 @@ class COCODataModule(pl.LightningDataModule):
 
                 #objs.append(obj)#SmartDL(url, self.data_dir,)
                 obj.start(blocking=False)
-                print("obj downloading to ",obj.get_dest())
+            #    print("obj downloading to ",obj.get_dest())
         for obj in objs:
             while not obj.isFinished():
                 #print("Speed: %s" % obj.get_speed(human=True))
-                print("Eta: %s" % obj.get_eta(human=True))
+            #    print("Eta: %s" % obj.get_eta(human=True))
                 time.sleep(5)
             if obj.isSuccessful():
                 print("Downloaded: %s" % obj.get_dest())
 
             path = obj.get_dest()
             if obj.FileName.startswith("annotations"):
-                print("Extracting annotations")
+                #print("Extracting annotations")
             else:
-                print("Extracting images")
-            print("path:",path)
+                #print("Extracting images")
+            #print("path:",path)
             if path.endswith(".zip"):
-                print("Extracting zip")
+                #print("Extracting zip")
                 with zipfile.ZipFile(path, 'r') as zip_ref:
                     try:
                         zip_ref.extractall(self.data_dir)
@@ -166,7 +166,7 @@ class COCODataModule(pl.LightningDataModule):
  
     def setup(self, stage=None):
         '''called on each GPU separately - stage defines if we are at fit or test step'''
-        print("Entered COCO datasetup")
+        #print("Entered COCO datasetup")
         
         if stage == 'fit' or stage is None:
             TrainSets=[]
@@ -177,7 +177,7 @@ class COCODataModule(pl.LightningDataModule):
 
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
-                print("dset:",dset.__dir__())
+                #print("dset:",dset.__dir__())
 
                 if len(dset)>0:
                     TrainSets.append(dset)
@@ -186,12 +186,12 @@ class COCODataModule(pl.LightningDataModule):
 
             ValSets=[]
             for version in self.splits['val']:
-                print("BUILDING SPLIT : ",version)
+                #print("BUILDING SPLIT : ",version)
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
                 dir=os.path.join(self.data_dir,version)
-                print("annfile:",annfile)
-                print("dir:",dir)
+                #print("annfile:",annfile)
+                #print("dir:",dir)
                 ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T))
             self.val = ConcatDataset(ValSets)
             # torch.save(self.train,"train.pt")
@@ -199,12 +199,12 @@ class COCODataModule(pl.LightningDataModule):
         if stage == 'test':
             TestSets=[]
             for version in self.splits['test']:
-                print("BUILDING SPLIT : ",version)
+                #print("BUILDING SPLIT : ",version)
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
                 dir=os.path.join(self.data_dir,version)
                 
-                print("annfile:",annfile)
-                print("dir:",dir)
+                #print("annfile:",annfile)
+                #print("dir:",dir)
                 TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=self.tokenizer, transform=self.T))
             self.test = ConcatDataset(TestSets)
 
