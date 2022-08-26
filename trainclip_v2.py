@@ -7,7 +7,6 @@ import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
-from PIL import Image
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -32,6 +31,8 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
+        print("learning_rate",learning_rate)
+        
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
