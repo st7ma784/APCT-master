@@ -1,8 +1,13 @@
 from test_tube import SlurmCluster
 from trainclip_v2 import train
+
+
 from HOparser import parser
 if __name__ == '__main__':
-   
+    from functools import partial
+    train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
+
+
     argsparser = parser(strategy='random_search')
     hyperparams = argsparser.parse_args()
 
@@ -36,7 +41,7 @@ if __name__ == '__main__':
         cmd='cpus-per-task', value='32', comment='CPUS per task.')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
-    cluster.per_experiment_nb_gpus = 0
+    cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
 
@@ -51,4 +56,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
 
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_cpu(train, nb_trials=40, job_name='first_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_cpu(train, nb_trials=5, job_name='first_trial_batch', job_display_name='my_BEDETestSweep') # Change this to optimize_parralel_cluster_cpu to debug.
