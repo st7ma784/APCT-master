@@ -32,7 +32,7 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
-        
+
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
@@ -177,9 +177,14 @@ class LightningCLIPModule(LightningModule):
       
         return [optimizer]
 
-def wandbtrain(config,dir,devices,accelerator,Dataset=None):
+def wandbtrain(config={
+        "batchsize":16,
+        "learning_rate":2e-4,
+        "precision":16,
+    },dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",config=config,save_dir=dir)
-    train(config,dir,devices,accelerator,Dataset,logtool)
+    print(logtool.__dir__())
+    train(logtool.experiment.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batchsize":16,
         "learning_rate":2e-4,
@@ -214,4 +219,4 @@ if __name__ == '__main__':
         "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
-    train(config)
+    wandbtrain(config)
