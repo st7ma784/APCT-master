@@ -38,7 +38,7 @@ if __name__ == '__main__':
     # #SBATCH --cmd=value
     # ############
     cluster.add_slurm_cmd(
-        cmd='A', value='bdlan05', comment='Project account for Bede')
+        cmd='account', value='bdlan05', comment='Project account for Bede')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
     cluster.per_experiment_nb_gpus = 4
