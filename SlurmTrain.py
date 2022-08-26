@@ -14,7 +14,7 @@ if __name__ == '__main__':
     # Enable cluster training.
     cluster = SlurmCluster(
         hyperparam_optimizer=hyperparams,
-        log_path=hyperparams.log_path,
+        log_path="/nobackup/projects/bdlan05/smander3/logs/",
         python_cmd='python3',
 #        test_tube_exp_name="PL_test"
     )
