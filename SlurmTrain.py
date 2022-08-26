@@ -37,8 +37,8 @@ if __name__ == '__main__':
     # #comment
     # #SBATCH --cmd=value
     # ############
-    #cluster.add_slurm_cmd(
-    #    cmd='cpus-per-task', value='32', comment='CPUS per task.')
+    cluster.add_slurm_cmd(
+        cmd='A', value='bdlan05', comment='Project account for Bede')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
     cluster.per_experiment_nb_gpus = 4
