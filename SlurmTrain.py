@@ -1,11 +1,11 @@
 from test_tube import SlurmCluster
-from trainclip_v2 import train
+from trainclip_v2 import train as train_clip
 
 
 from HOparser import parser
 if __name__ == '__main__':
     from functools import partial
-    train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
+    train=partial(train_clip,dir="/nobackup/projects/bdlan05/smander3/data/")
 
 
     argsparser = parser(strategy='random_search')
