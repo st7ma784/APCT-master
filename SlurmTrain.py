@@ -40,14 +40,17 @@ if __name__ == '__main__':
     # ############
     cluster.add_slurm_cmd(
         cmd='account', value='bdlan05', comment='Project account for Bede')
+    cluster.add_slurm_cmd(
+        cmd='cpus-per-task', value='8', comment='CPUs per task')
 
     # Set job compute details (this will apply PER set of hyperparameters.)
+
     cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
 
     # we'll request 100GB of memory per node
-    cluster.memory_mb_per_node = 100000
+    cluster.memory_mb_per_node = 80000
 
     # set a walltime of 24 hours,0, minues
     cluster.job_time = '24:00:00'
