@@ -146,9 +146,9 @@ class COCODataModule(pl.LightningDataModule):
                 print("Downloaded: %s" % obj.get_dest())
 
             path = obj.get_dest()
-            if obj.FileName.startswith("annotations"):
+            #if obj.FileName.startswith("annotations"):
                 #print("Extracting annotations")
-            else:
+            #else:
                 #print("Extracting images")
             #print("path:",path)
             if path.endswith(".zip"):

@@ -178,27 +178,27 @@ class LightningCLIPModule(LightningModule):
       
         return [optimizer]
 import wandb
-def wandbtrain(config,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",save_dir=dir,config=config) as run:
+def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+    with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
         logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
-        print(logtool.__dir__())
-        config=run.experiment.config
+        #print(logtool.__dir__())
+        config=logtool.experiment.config
         print("WANDB CONFIG",config)
         train(config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
-        "batchsize":16,
+        "batch_size":16,
         "learning_rate":2e-4,
         "precision":16,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                    train_batch_size=config["batchsize"],
+                                    train_batch_size=config["batch_size"],
                                     adam_epsilon = 1e-8)
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
 
-        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batchsize"])
-    Dataset.batch_size=config["batchsize"]
+        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
+    Dataset.batch_size=config["batch_size"]
     trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
