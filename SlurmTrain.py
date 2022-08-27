@@ -45,7 +45,10 @@ if __name__ == '__main__':
 
     # Set job compute details (this will apply PER set of hyperparameters.)
     #print(cluster.__dir__())
-    del cluster.memory_mb_per_node
+    #del cluster.memory_mb_per_node
+    #This is commented because on bede, having gone into 
+    #nano /nobackup/projects/bdlan05/smander3/miniconda/envs/open-ce/lib/python3.9/site-packages/test_tube/hpc.py
+    #and removed memory per node and adjusted to not include cpu counts as this is done automatically in bede 
     #del cluster.per_experiment_nb_cpus
     cluster.cpus_per_task=0
     cluster.per_experiment_nb_gpus = 4
