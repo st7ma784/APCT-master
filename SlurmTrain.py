@@ -47,6 +47,7 @@ if __name__ == '__main__':
     #print(cluster.__dir__())
     del cluster.memory_mb_per_node
     #del cluster.per_experiment_nb_cpus
+    cluster.cpus_per_task=0
     cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = -1
     #cluster.gpu_type = '1080ti'
