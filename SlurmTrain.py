@@ -60,6 +60,6 @@ if __name__ == '__main__':
     # 1 minute before walltime is up, SlurmCluster will launch a continuation job and kill this job.
     # you must provide your own loading and saving function which the cluster object will call
     cluster.minutes_to_checkpoint_before_walltime = 1
-    #print(cluster.__dir__())
+    print(cluster.__dir__())
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='third_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
+    #cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='third_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
