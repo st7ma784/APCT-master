@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Set job compute details (this will apply PER set of hyperparameters.)
     #print(cluster.__dir__())
     del cluster.memory_mb_per_node
-    #del cluster.cpus_per_node
+    del cluster.per_experiment_nb_cpus
     cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = 1
     #cluster.gpu_type = '1080ti'
@@ -62,4 +62,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
     print(cluster.__dir__())
     # run the models on the cluster
-    #cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='third_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='third_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
