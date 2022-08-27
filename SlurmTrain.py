@@ -52,11 +52,11 @@ if __name__ == '__main__':
     #del cluster.per_experiment_nb_cpus
     cluster.cpus_per_task=0
     cluster.per_experiment_nb_gpus = 4
-    cluster.per_experiment_nb_nodes = -1
+    cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
 
     # we'll request 100GB of memory per node
-    #cluster.memory_mb_per_node = 80000
+    #cluster.memory_mb_per_node = 0
 
     # set a walltime of 24 hours,0, minues
     cluster.job_time = '24:00:00'
