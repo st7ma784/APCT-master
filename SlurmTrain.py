@@ -46,7 +46,7 @@ if __name__ == '__main__':
     # Set job compute details (this will apply PER set of hyperparameters.)
     #print(cluster.__dir__())
     del cluster.memory_mb_per_node
-    del cluster.per_experiment_nb_cpus
+    #del cluster.per_experiment_nb_cpus
     cluster.per_experiment_nb_gpus = 4
     cluster.per_experiment_nb_nodes = -1
     #cluster.gpu_type = '1080ti'
