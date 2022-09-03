@@ -214,6 +214,7 @@ def train(config={
             devices=1,
             accelerator=accelerator,
             max_epochs=40,
+            auto_select_gpus=True,
             #profiler="advanced",
             logger=logtool,
             strategy="ddp",#deepspeed_stage_1
