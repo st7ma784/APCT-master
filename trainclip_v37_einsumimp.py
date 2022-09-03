@@ -122,49 +122,62 @@ class LightningCLIPModule(LightningModule):
         
         cacheim=self.encode_image(batch[0])
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
-        lossim = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache1,cache2,cache3),torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim)),labels)
-        self.log('imloss', lossim, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        self.manual_backward(lossim,retain_graph=True)
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)
+        self.log('imloss', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        self.manual_backward(loss,retain_graph=True)
         cacheim=cacheim.detach()#.to(torch.device("cpu"),non_blocking=True)
-        del lossim,batch[0]
 
+
+        del loss,batch[0]
         cap1,cap2,cap3,cap4,cap5=batch[0][:,0],batch[0][:,1],batch[0][:,2],batch[0][:,3],batch[0][:,4]
         del batch
 
         caption_features1=self.encode_text(cap1)
+        #print(caption_features1.requires_grad)
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-        loss1 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache2,cache3,cache4),torch.einsum("az,bz,cz->abcz",cache5,cacheim,caption_features1)),labels)
-        self.manual_backward(loss1,retain_graph=True)
-        self.log('caption1', loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features1,loss1,cap1
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,caption_features1,cache2)),labels)
+
+        self.manual_backward(loss,retain_graph=True)
+        self.log('caption1', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features1,loss,cap1
+
 
         caption_features2=self.encode_text(cap2)
+        #print(caption_features2.requires_grad)
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
-        loss2 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)
-        self.manual_backward(loss2,retain_graph=True)
-        self.log('caption2', loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features2,loss2,cap2
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)        
+        self.manual_backward(loss,retain_graph=True)
+        self.log('caption2', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features2,loss,cap2
+
 
         caption_features3=self.encode_text(cap3)
+        #print(caption_features3.requires_grad)
+
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-        loss3 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim),torch.einsum("az,bz,cz->abcz",cache1,cache2,caption_features3)),labels)
-        self.manual_backward(loss3,retain_graph=True)
-        self.log('caption3', loss3,  prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features3,loss3,cap3 
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",caption_features3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
+        self.manual_backward(loss,retain_graph=True)
+        self.log('caption3', loss,  prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features3,loss,cap3 
+
 
         caption_features4=self.encode_text(cap4)
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-        loss4 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache5,cacheim,cache1),torch.einsum("az,bz,cz->abcz",cache2,cache3,caption_features4)),labels)
-        self.manual_backward(loss4,retain_graph=True)
-        self.log('caption4', loss4,  prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features4,loss4,cap4
+        #print(caption_features4.requires_grad)
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,caption_features4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
+        self.manual_backward(loss,retain_graph=True)
+        self.log('caption4', loss,  prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features4,loss,cap4
+
 
         caption_features5=self.encode_text(cap5)
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-        loss5 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2),torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5)), labels)
-        self.manual_backward(loss5,retain_graph=True)
-        self.log('caption5', loss5, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features5,loss5,cap5
+        #print(caption_features5.requires_grad)
+        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
+        self.manual_backward(loss,retain_graph=True)
+        self.log('caption5', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features5,loss,cap5
+
 
         opt_a.step()
         opt_a.zero_grad()
@@ -229,14 +242,14 @@ def train(config={
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
-        "batch_size":33, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
+        "batch_size":24, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
         #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
         # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
         "learning_rate":2e-3,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
-        "embed_dim": 256,
+        "embed_dim": 128,
         "transformer_width": 256,
         "transformer_heads": 16,
-        "transformer_layers": 5,
+        "transformer_layers": 4,
     }
-    wandbtrain(config)
+    train(config)
