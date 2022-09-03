@@ -7,6 +7,9 @@ import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
+from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
+from pytorch_lightning.strategies import DeepSpeedStrategy
+import deepspeed
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -58,8 +61,7 @@ class LightningCLIPModule(LightningModule):
         self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
         self.vocab_size = vocab_size
-
-        self.vocab_size = vocab_size
+        #self.automatic_optimization=False
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
         self.ln_final = LayerNorm(transformer_width)
@@ -147,6 +149,8 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
+        # access your optimizers with use_pl_optimizer=False. Default is True,
+        # setting use_pl_optimizer=True will maintain plugin/precision support
         labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index)
 
         for i in range(3):
@@ -157,6 +161,7 @@ class LightningCLIPModule(LightningModule):
         #print(captions.shape)#Batchx 5 Capions x Length
         imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         #print(logits1.shape ,labels.shape)
+        del im,captions
         loss1 = self.loss1(logits1, labels)
         loss2 = self.loss2(logits2, labels)
         loss3 = self.loss3(logits3, labels)
@@ -167,21 +172,18 @@ class LightningCLIPModule(LightningModule):
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False)
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
         return {"loss": loss}
-
-            
     def configure_optimizers(self):
         
-        optimizer = torch.optim.Adam(
+        optimizerA = FusedAdam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-      
-        return [optimizer]
+        return [optimizerA]
 import wandb
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
+    with wandb.init(project="6DIMCacheSweep",entity="st7ma784",config=config) as run:
 
-        logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCacheSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
         config=logtool.experiment.config
         print("WANDB CONFIG",config)
@@ -205,9 +207,15 @@ def train(config={
             max_epochs=100,
             #profiler="advanced",
             logger=logtool,
-            strategy="ddp",
-            #callbacks=callbacks,
-            gradient_clip_val=0.25,
+            #strategy="ddp",
+            strategy=DeepSpeedStrategy(
+            stage=1,
+            #offload_optimizer=True, 
+
+
+            #cpu_checkpointing=False,  # (Optional) offload activations to CPU
+            ),            #callbacks=callbacks,
+            #gradient_clip_val=0.25,
             precision=config["precision"]
     )
     if config["batch_size"] !=1:
@@ -217,8 +225,11 @@ def train(config={
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
-        "batch_size":22,         #[1,4,8,16,32,64] # 13 for 8GB VRAM, 19 for 24GB VRAM
-        "learning_rate":2e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+        "batch_size":19,         #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 01:13:00 -ddp )
+        #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  (eta 3hr:25)
+        #                                          #v4: ? for 10GB VRAM (ETA 1:46:00),   19 for 24GB VRAM  (eta  1:20  min)
+        # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
+        "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
-    wandbtrain(config)
+    train(config)

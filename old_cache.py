@@ -7,6 +7,7 @@ import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
+from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -51,15 +52,10 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.vocab_size = vocab_size
+        self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
 
         self.vocab_size = vocab_size
+        self.automatic_optimization=False
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
         self.ln_final = LayerNorm(transformer_width)
@@ -103,85 +99,106 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def forward(self, im, captions1, captions2, captions3, captions4, captions5):
-        #if self.useclip_im:
-        image_features=self.encode_image(im)
-        image_features = image_features / image_features.norm(dim=1, keepdim=True)
-
-        caption_features1=self.encode_text(captions1)
-        caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-
-        caption_features2=self.encode_text(captions2)
-        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
-
-        caption_features3=self.encode_text(captions3)
-        caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-
-        caption_features4=self.encode_text(captions4)
-        caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-
-        caption_features5=self.encode_text(captions5)
-        caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-
-
-        # normalized features
-
-        #each of these is B x D
-        #in a square we get BxB Matrix of DxD matrices for logits
-        #for 3 features we get BxBxB matrix of DxDxD matrices for logits
-        logs=self.logit_scale.exp()
-        imlogits=logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',image_features,caption_features1,caption_features2,caption_features3,caption_features4,caption_features5)
-        
-        # logits1= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features1,caption_features2,caption_features3,caption_features4,caption_features5,image_features)
-        # logits2= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features2,caption_features3,caption_features4,caption_features5,image_features,caption_features1)
-        # logits3= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features3,caption_features4,caption_features5,image_features,caption_features1,caption_features2)
-        # logits4= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features4,caption_features5,image_features,caption_features1,caption_features2,caption_features3)
-        # logits5= logs*torch.einsum('a...,b...,c...,d...,e...,f...->abcdef',caption_features5,image_features,caption_features1,caption_features2,caption_features3,caption_features4)
-        logits1=imlogits.permute(1,2,3,4,5,0)
-        logits2=imlogits.permute(2,3,4,5,0,1)
-        logits3=imlogits.permute(3,4,5,0,1,2)
-        logits4=imlogits.permute(4,5,0,1,2,3)
-        logits5=imlogits.permute(5,0,1,2,3,4)
-
-        return imlogits,logits1,logits2,logits3,logits4,logits5
-
-
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index)
+        # access your optimizers with use_pl_optimizer=False. Default is True,
+        # setting use_pl_optimizer=True will maintain plugin/precision support
+        opt_a = self.optimizers()
 
+        labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.loss.ignore_index)
+        logs=self.logit_scale.exp()
         for i in range(3):
             labels=torch.diag_embed(labels)
-        labels=labels+self.lossim.ignore_index
+        labels=labels+self.loss.ignore_index
         #self.labels=self.labels.to(self.device)
         im,captions= batch[0],batch[1]
-        #print(captions.shape)#Batchx 5 Capions x Length
-        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        #print(logits1.shape ,labels.shape)
-        loss1 = self.loss1(logits1, labels)
-        loss2 = self.loss2(logits2, labels)
-        loss3 = self.loss3(logits3, labels)
-        loss4 = self.loss4(logits4, labels)
-        loss5 = self.loss5(logits5, labels)
-        lossim = self.lossim(imlogits, labels)
+        cap1,cap2,cap3,cap4,cap5=captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4]
+        with torch.no_grad():
+            cache=self.encode_text(captions.flatten(start_dim=0,end_dim=1)).unflatten(0,(captions.shape[0],5),)
+            cacheim=self.encode_image(im).detach()
+            cacheim=cacheim/cacheim.norm(dim=-1, keepdim=True).detach()
+            cache=cache/cache.norm(dim=-1, keepdim=True).detach()
+            ic1234=torch.einsum("az,bz,cz,dz,ez->abcdez",cacheim,cache[:,0],cache[:,1],cache[:,2],cache[:,3])
+            ic1235=torch.einsum("az,bz,cz,dz,ez->abcdez",cache[:,4],cacheim,cache[:,0],cache[:,1],cache[:,2])
+            ic1245=torch.einsum("az,bz,cz,dz,ez->abcdez",cache[:,3],cache[:,4],cacheim,cache[:,0],cache[:,1])
+            ic1345=torch.einsum("az,bz,cz,dz,ez->abcdez",cache[:,2],cache[:,3],cache[:,4],cacheim,cache[:,0])
+            ic2345=torch.einsum("az,bz,cz,dz,ez->abcdez",cache[:,1],cache[:,2],cache[:,3],cache[:,4],cacheim)
+            c12345=torch.einsum("az,bz,cz,dz,ez->abcdez",cache[:,0],cache[:,1],cache[:,2],cache[:,3],cache[:,4])
+            del cache,captions,cacheim
+        
+        cacheim=self.encode_image(im)
+        cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
+        lossim = self.loss(logs*torch.einsum('az,bcdefz->abcdef',cacheim,c12345),labels)
+        self.log('imloss', lossim, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        self.manual_backward(lossim,retain_graph=True)
 
-        loss = lossim+loss1+loss2+loss3+loss4+loss5
-        loss=loss/6
-        loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False)
-        return {"loss": loss}
+        #cacheim=cacheim.detach()#.to(torch.device("cpu"),non_blocking=True)
 
+        del im,lossim,cacheim
+
+        caption_features1=self.encode_text(cap1)
+        caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
+        loss1 = self.loss(logs*torch.einsum('az,bcdefz->abcdef',caption_features1,ic2345),labels)
+        self.log('caption1', loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        #self.all_gather(loss1,sync_grads=True)
+
+        self.manual_backward(loss1,retain_graph=True)
+
+        del caption_features1,loss1
+
+        caption_features2=self.encode_text(cap2)
+        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
+        loss2 = self.loss(logs*torch.einsum('az,bcdefz->abcdef',caption_features2,ic1345),labels)
+        #self.all_gather(loss2,sync_grads=True)
+
+        self.log('caption2', loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        self.manual_backward(loss2,retain_graph=True)
+
+
+        del caption_features2,loss2
+        caption_features3=self.encode_text(cap3)
+        caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
+        loss3 = self.loss(logs*torch.einsum('az,bcdefz->abcdef',caption_features3,ic1245),labels)
+        #self.all_gather(loss3,sync_grads=True)
+
+        self.log('caption3', loss3, prog_bar=True,rank_zero_only=True,enable_graph=False)
+        self.manual_backward(loss3,retain_graph=True)
+
+        del caption_features3,loss3
+
+        caption_features4=self.encode_text(cap4)
+        caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
+        loss4 = self.loss(logs*torch.einsum('az,bcdefz->abcdef',caption_features4,ic1235),labels)
+        #self.all_gather(loss4,sync_grads=True)
+
+        self.log('caption4', loss4, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        self.manual_backward(loss4,retain_graph=True)
+
+        del caption_features4,loss4
+
+        caption_features5=self.encode_text(cap5)
+        caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
+        loss5 = self.loss(logs*torch.einsum('az,bcdefz->abcdef',caption_features5,ic1234),labels)
+
+        self.manual_backward(loss5,retain_graph=True)
+
+        self.log('caption5', loss5, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        del caption_features5,loss5
+        opt_a.step()
+        opt_a.zero_grad()
+        #        self.backward(0)
             
     def configure_optimizers(self):
         
-        optimizer = torch.optim.Adam(
+        optimizerA = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
-        return [optimizer]
+
+        return [optimizerA]
 import wandb
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
+    with wandb.init(project="6DIMCacheSweep",entity="st7ma784",config=config) as run:
 
-        logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCacheSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
         config=logtool.experiment.config
         print("WANDB CONFIG",config)
@@ -205,9 +222,9 @@ def train(config={
             max_epochs=100,
             #profiler="advanced",
             logger=logtool,
-            strategy="ddp",
+            strategy="ddp",#deepspeed_stage_1
             #callbacks=callbacks,
-            gradient_clip_val=0.25,
+            #gradient_clip_val=0.25,
             precision=config["precision"]
     )
     if config["batch_size"] !=1:
@@ -217,8 +234,10 @@ def train(config={
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
-        "batch_size":22,         #[1,4,8,16,32,64] # 13 for 8GB VRAM, 19 for 24GB VRAM
-        "learning_rate":2e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+        "batch_size":23,         #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
+        #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
+        # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
+        "learning_rate":3e-4,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
     }
     wandbtrain(config)
