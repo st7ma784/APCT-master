@@ -1,5 +1,5 @@
 #$ -S /bin/bash
-#$ -q medium
+#$ -q short
 #$ -l ngpus=1
 #$ -l ncpus=6
 #$ -l h_vmem=80G
@@ -23,5 +23,4 @@ export ISHEC=1
 export NCCL_DEBUG=INFO
 export NCCL_DEBUG_SUBSYS=ALL
 export wandb='9cf7e97e2460c18a89429deed624ec1cbfb537bc'
-python trainagent.py --data_dir $global_scratch --sweep_id rv9zla43
-
+python trainagent.py --data_dir $global_scratch 
