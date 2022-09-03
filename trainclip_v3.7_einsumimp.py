@@ -1,4 +1,5 @@
 
+from gc import callbacks
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn
@@ -6,7 +7,7 @@ import torch
 import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
-from pytorch_lightning.callbacks import TQDMProgressBar
+from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 
 class LightningCLIPModule(LightningModule):
@@ -220,14 +221,18 @@ def train(config={
 
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     Dataset.batch_size=config["batch_size"]
+    callbacks=[
+        TQDMProgressBar(),
+        EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
+    ]
     trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
-            max_epochs=100,
+            max_epochs=40,
             #profiler="advanced",
             logger=logtool,
             strategy="ddp",#deepspeed_stage_1
-            #callbacks=callbacks,
+            callbacks=callbacks,
             #gradient_clip_val=0.25,
             precision=config["precision"]
     )
