@@ -8,7 +8,7 @@ import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
+# from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
