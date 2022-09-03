@@ -104,13 +104,13 @@ class COCODataModule(pl.LightningDataModule):
             os.makedirs(self.data_dir,exist_ok=True)
         if not os.path.exists(self.ann_dir):
             os.makedirs(self.ann_dir,exist_ok=True)
-        urls=['http://images.cocodataset.org/zips/train2014.zip',
-                'http://images.cocodataset.org/zips/val2014.zip',
-                'http://images.cocodataset.org/zips/test2015.zip',
-                'http://images.cocodataset.org/zips/train2017.zip',
-                'http://images.cocodataset.org/zips/val2017.zip',
-                'http://images.cocodataset.org/annotations/annotations_trainval2014.zip',
-                'http://images.cocodataset.org/annotations/annotations_trainval2017.zip'
+        urls=['https://images.cocodataset.org/zips/train2014.zip',
+                'https://images.cocodataset.org/zips/val2014.zip',
+                'https://images.cocodataset.org/zips/test2015.zip',
+                'https://images.cocodataset.org/zips/train2017.zip',
+                'https://images.cocodataset.org/zips/val2017.zip',
+                'https://images.cocodataset.org/annotations/annotations_trainval2014.zip',
+                'https://images.cocodataset.org/annotations/annotations_trainval2017.zip'
                 ]
 
         objs=[]
@@ -121,7 +121,7 @@ class COCODataModule(pl.LightningDataModule):
             #print("Location", location) #/Data/train2014.zip
             #time.sleep(5)
             #print('Downloading',url)
-            obj=SmartDL(url,os.path.join(location,str(url).split('/')[-1]),progress_bar=False)
+            obj=SmartDL(url,os.path.join(location,name),progress_bar=False,)
             obj.FileName=name
             if name.endswith(".zip"):
                 name=name[:-4]
@@ -134,26 +134,14 @@ class COCODataModule(pl.LightningDataModule):
             if not os.path.exists(os.path.join(location,name+".zip")):
                 print(os.path.join(location,name))
                 objs.append(obj)
-
-                #objs.append(obj)#SmartDL(url, self.data_dir,)
                 obj.start(blocking=False)
-            #    print("obj downloading to ",obj.get_dest())
         for obj in objs:
             while not obj.isFinished():
-                #print("Speed: %s" % obj.get_speed(human=True))
-            #    print("Eta: %s" % obj.get_eta(human=True))
                 time.sleep(5)
             if obj.isSuccessful():
                 print("Downloaded: %s" % obj.get_dest())
-
             path = obj.get_dest()
-            #if obj.FileName.startswith("annotations"):
-                #print("Extracting annotations")
-            #else:
-                #print("Extracting images")
-            #print("path:",path)
             if path.endswith(".zip"):
-                #print("Extracting zip")
                 with zipfile.ZipFile(path, 'r') as zip_ref:
                     try:
                         zip_ref.extractall(self.data_dir)
