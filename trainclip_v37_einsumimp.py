@@ -140,7 +140,7 @@ class LightningCLIPModule(LightningModule):
 
         caption_features2=self.encode_text(cap2)
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
-        loss2 = self.loss(logs* torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)
+        loss2 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)
         self.manual_backward(loss2,retain_graph=True)
         self.log('caption2', loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features2,loss2,cap2
@@ -148,8 +148,8 @@ class LightningCLIPModule(LightningModule):
         caption_features3=self.encode_text(cap3)
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
         loss3 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim),torch.einsum("az,bz,cz->abcz",cache1,cache2,caption_features3)),labels)
-        self.log('caption3', loss3, prog_bar=True,rank_zero_only=True,enable_graph=False)
         self.manual_backward(loss3,retain_graph=True)
+        self.log('caption3', loss3, prog_bar=True,rank_zero_only=True,enable_graph=False)
         del caption_features3,loss3,cap3
 
         caption_features4=self.encode_text(cap4)
