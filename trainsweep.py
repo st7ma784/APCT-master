@@ -9,17 +9,29 @@ if __name__=="__main__":
         },
         'parameters': {
             'learning_rate': {
-                'values':[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+                'values':[2e-4,1e-4,5e-5,2e-5]
             },
             'batch_size': {
-                'values': [2,4,8,10,12,24,48]
+                'values': [16,24,32]
             },
             'precision': {
-                'values': [32,16]
+                'values': ['bf16']
+            },
+            'embed_dim':{
+                'values': [128,256,512]
+            }, 
+            'transformer_width':{
+                'values': [128,256,512]
+            },
+            'transformer_heads':{
+                'values': [8,16,32]
+            },
+            'transformer_layers':{
+                'values': [4,5,6]
             },
         }
     }
 
     # Create the sweep
-    sweep_id = wandb.sweep(sweep_config, project="6DimContrSweep", entity="st7ma784")
+    sweep_id = wandb.sweep(sweep_config, project="6DimCachespliteinSweep", entity="st7ma784")
     print(sweep_id)

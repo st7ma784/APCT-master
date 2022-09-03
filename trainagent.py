@@ -1,12 +1,12 @@
 
 import wandb
-from trainclip_v2 import wandbtrain
+from trainclip_v37_einsumimp import wandbtrain
 from BuildSpainDataSet import COCODataModule
 import argparse
 from functools import partial
 wandb.login()
 parser = argparse.ArgumentParser()
-parser.add_argument("--sweep_id", default="futbumne",nargs="?", type=str)
+parser.add_argument("--sweep_id", default="qwwid2if",nargs="?", type=str)
 parser.add_argument("--data_dir", default="/Data",nargs="?", type=str)
 parser.add_argument("--devices", default="auto",nargs="?", type=str)
 parser.add_argument("--accelerator", default="auto",nargs="?", type=str)

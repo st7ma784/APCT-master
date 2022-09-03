@@ -112,7 +112,6 @@ class LightningCLIPModule(LightningModule):
         #self.labels=self.labels.to(self.device)
         with torch.no_grad():
             cache=self.encode_text(batch[1].flatten(start_dim=0,end_dim=1)).unflatten(0,(batch[1].shape[0],5),)
-            
             cache=cache/cache.norm(dim=-1, keepdim=True)
             cache1=cache[:,0]
             cache2=cache[:,1]#.to(torch.device("cpu"),non_blocking=True)
@@ -123,70 +122,50 @@ class LightningCLIPModule(LightningModule):
         
         cacheim=self.encode_image(batch[0])
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
-        #torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache1,cache2,cache3),torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim))
         lossim = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache1,cache2,cache3),torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim)),labels)
         self.log('imloss', lossim, prog_bar=True,enable_graph=False,rank_zero_only=True)
         self.manual_backward(lossim,retain_graph=True)
-
         cacheim=cacheim.detach()#.to(torch.device("cpu"),non_blocking=True)
-
         del lossim,batch[0]
-        
+
         cap1,cap2,cap3,cap4,cap5=batch[0][:,0],batch[0][:,1],batch[0][:,2],batch[0][:,3],batch[0][:,4]
         del batch
+
         caption_features1=self.encode_text(cap1)
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
         loss1 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache2,cache3,cache4),torch.einsum("az,bz,cz->abcz",cache5,cacheim,caption_features1)),labels)
-        self.log('caption1', loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        #self.all_gather(loss1,sync_grads=True)
-
         self.manual_backward(loss1,retain_graph=True)
-
+        self.log('caption1', loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features1,loss1,cap1
 
         caption_features2=self.encode_text(cap2)
-        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
-       
+        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
         loss2 = self.loss(logs* torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)
-        #self.all_gather(loss2,sync_grads=True)
-
-        self.log('caption2', loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
         self.manual_backward(loss2,retain_graph=True)
-
-
+        self.log('caption2', loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features2,loss2,cap2
+
         caption_features3=self.encode_text(cap3)
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
         loss3 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache4,cache5,cacheim),torch.einsum("az,bz,cz->abcz",cache1,cache2,caption_features3)),labels)
-        #self.all_gather(loss3,sync_grads=True)
-
         self.log('caption3', loss3, prog_bar=True,rank_zero_only=True,enable_graph=False)
         self.manual_backward(loss3,retain_graph=True)
-
         del caption_features3,loss3,cap3
 
         caption_features4=self.encode_text(cap4)
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-        
-
         loss4 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache5,cacheim,cache1),torch.einsum("az,bz,cz->abcz",cache2,cache3,caption_features4)),labels)
-        #self.all_gather(loss4,sync_grads=True)
-
-        self.log('caption4', loss4, prog_bar=True,enable_graph=False,rank_zero_only=True)
         self.manual_backward(loss4,retain_graph=True)
-
+        self.log('caption4', loss4, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features4,loss4,cap4
 
         caption_features5=self.encode_text(cap5)
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-        
         loss5 = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2),torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5)), labels)
-        #self.all_gather(loss5,sync_grads=True)
-
         self.manual_backward(loss5,retain_graph=True)
-
         self.log('caption5', loss5, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features5,loss5,cap5
+
         opt_a.step()
         opt_a.zero_grad()
         #        self.backward(0)
@@ -211,10 +190,17 @@ def train(config={
         "batch_size":16,
         "learning_rate":2e-3,
         "precision":16,
+        "embed_dim": 512,
+        "transformer_width": 512,
+        "transformer_heads": 32,
+        "transformer_layers": 4,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batch_size"],
-                                    adam_epsilon = 1e-8)
+                                    embed_dim= config[ "embed_dim"],
+                                    transformer_width= config["transformer_width"],
+                                    transformer_heads= config["transformer_heads"],
+                                    transformer_layers= config["transformer_layers"])
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
 
@@ -226,7 +212,6 @@ def train(config={
     ]
     trainer=pytorch_lightning.Trainer(
             devices=1,
-            auto_select_gpus=True,
             accelerator=accelerator,
             max_epochs=40,
             #profiler="advanced",
@@ -248,5 +233,9 @@ if __name__ == '__main__':
         # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
         "learning_rate":2e-3,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
+        "embed_dim": 256,
+        "transformer_width": 256,
+        "transformer_heads": 16,
+        "transformer_layers": 5,
     }
     wandbtrain(config)
