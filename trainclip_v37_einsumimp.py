@@ -1,5 +1,4 @@
 
-from gc import callbacks
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn

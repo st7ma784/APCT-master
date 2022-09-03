@@ -16,7 +16,7 @@ prep=Compose([
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
         ])
 T= transforms.Compose([transforms.Resize((224,224),interpolation=Image.NEAREST),transforms.ToTensor()])
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer,GPT2Tokenizer
 import time
 from pathlib import Path
 class COCODataset(CocoCaptions):
@@ -72,7 +72,7 @@ class COCODataModule(pl.LightningDataModule):
         self.splits={"train":[],"val":[],"test":[]}
         try: 
             self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
-        except OSError as e:
+        except ValueError as e:
             from transformers import GPT2Tokenizer
             tok = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=self.data_dir)
             tok.save_pretrained(self.data_dir)
