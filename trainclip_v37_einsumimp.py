@@ -225,8 +225,7 @@ def train(config={
         EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
     ]
     trainer=pytorch_lightning.Trainer(
-            devices=1,
-            auto_select_gpus=True,
+            devices=devices,
             accelerator=accelerator,
             max_epochs=40,
             #profiler="advanced",
