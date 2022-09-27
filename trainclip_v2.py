@@ -178,6 +178,23 @@ class LightningCLIPModule(LightningModule):
       
         return [optimizer]
 import wandb
+def testtrainfunc(*args):
+    import time
+    import os
+    import socket
+    from datetime import datetime as dt
+    if __name__ == '__main__':
+        print('Process started {}'.format(dt.now()))
+        print('NODE : {}'.format(socket.gethostname()))
+        print('PID  : {}'.format(os.getpid()))
+        print('Executing for 15 secs')
+        time.sleep(15)
+        print('Process finished {}\n'.format(dt.now()))
+        import torch
+        print("CUDA? {}".format(torch.cuda.is_available()))
+        
+        print([torch.cuda.get_device_name(d) for d in range(torch.cuda.device_count())])
+        
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
