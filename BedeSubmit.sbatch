@@ -12,6 +12,6 @@
 #SBATCH --mail-user=st7ma784@gmail.com
 #SBATCH --account=bdlan05
 #SBATCH --partition=gpu
-
+export SLURM_NNODES=$SLURM_JOB_NUM_NODES
 source activate open-ce
 srun python3 /nobackup/projects/bdlan05/smander3/6DIMCOCO/trainagent.py

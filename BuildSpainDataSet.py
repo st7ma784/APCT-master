@@ -89,7 +89,7 @@ class COCODataModule(pl.LightningDataModule):
         if B is None:
             B=self.batch_size
        
-        return torch.utils.data.DataLoader(self.val_dataset, batch_size=B, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
+        return torch.utils.data.DataLoader(self.val, batch_size=B, shuffle=True, num_workers=4, prefetch_factor=4, pin_memory=True,drop_last=True)
     def test_dataloader(self,B=None):
         if B is None:
             B=self.batch_size

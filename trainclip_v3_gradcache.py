@@ -226,6 +226,7 @@ def train(config={
             logger=logtool,
             strategy="ddp",#deepspeed_stage_1
             #callbacks=callbacks,
+            #accumulate_grad_batches=8,
             #gradient_clip_val=0.25,
             precision=config["precision"]
     )

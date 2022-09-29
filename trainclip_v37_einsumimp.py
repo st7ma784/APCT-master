@@ -1,8 +1,10 @@
 
+from calendar import c
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
+import os
 import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
@@ -15,6 +17,7 @@ class LightningCLIPModule(LightningModule):
                 learning_rate,
                 useclip_en=True,
                 useclip_im=True,
+                JSE=False,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
                 weight_decay: float = 0.0,
@@ -32,6 +35,8 @@ class LightningCLIPModule(LightningModule):
                 ):
 
         super().__init__()
+        self.JSE=JSE
+        self.gelu=nn.GELU()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
 
@@ -98,7 +103,15 @@ class LightningCLIPModule(LightningModule):
         x = self.ln_final(x).type(self.dtype)
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x.contiguous()
+    # def on_validation_epoch_start(self):
+    #     self.eval()
+    #     self.freeze()
+    #     #import clip model here]
+    #     pass
 
+    # def validation_step(self,batch,*args):
+    #     #do CKA test of model compared to CLIP
+    #     pass
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         # access your optimizers with use_pl_optimizer=False. Default is True,
         # setting use_pl_optimizer=True will maintain plugin/precision support
@@ -119,21 +132,32 @@ class LightningCLIPModule(LightningModule):
             cache4=cache[:,3]#.to(torch.device("cpu"),non_blocking=True)
             cache5=cache[:,4]#.to(torch.device("cpu"),non_blocking=True)
             del cache
-        
         cacheim=self.encode_image(batch[0])
+        if self.JSE:
+            JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
+            cacheim=torch.mul(cacheim,JSEFactor)
+            cacheim=self.gelu(cacheim)
+            del JSEFactor
+
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)
-        self.log('imloss', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
         self.manual_backward(loss,retain_graph=True)
         cacheim=cacheim.detach()#.to(torch.device("cpu"),non_blocking=True)
+        self.log('imloss', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
 
 
-        del loss,batch[0]
+        del loss,batch[0]        
+
         cap1,cap2,cap3,cap4,cap5=batch[0][:,0],batch[0][:,1],batch[0][:,2],batch[0][:,3],batch[0][:,4]
         del batch
 
         caption_features1=self.encode_text(cap1)
         #print(caption_features1.requires_grad)
+        if self.JSE:
+            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
+            caption_features1=torch.mul(caption_features1,JSEFactor)
+            #caption_features1=self.gelu(caption_features1)
+            del JSEFactor
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,caption_features1,cache2)),labels)
 
@@ -144,6 +168,11 @@ class LightningCLIPModule(LightningModule):
 
         caption_features2=self.encode_text(cap2)
         #print(caption_features2.requires_grad)
+        if self.JSE:
+            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,caption_features2,cache3,cache4,cache5,cacheim]),2),dim=0))
+            caption_features2=torch.mul(caption_features2,JSEFactor)
+            #caption_features2=self.gelu(caption_features2)
+            del JSEFactor
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)        
         self.manual_backward(loss,retain_graph=True)
@@ -153,7 +182,11 @@ class LightningCLIPModule(LightningModule):
 
         caption_features3=self.encode_text(cap3)
         #print(caption_features3.requires_grad)
-
+        if self.JSE:
+            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,caption_features3,cache4,cache5,cacheim]),2),dim=0))
+            caption_features3=torch.mul(caption_features3,JSEFactor)
+            #caption_features3=self.gelu(caption_features3)
+            del JSEFactor
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",caption_features3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
         self.manual_backward(loss,retain_graph=True)
@@ -162,6 +195,11 @@ class LightningCLIPModule(LightningModule):
 
 
         caption_features4=self.encode_text(cap4)
+        if self.JSE:
+            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,caption_features4,cache5,cacheim]),2),dim=0))
+            caption_features4=torch.mul(caption_features4,JSEFactor)
+            #caption_features4=self.gelu(caption_features4)
+            del JSEFactor
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
         #print(caption_features4.requires_grad)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,caption_features4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
@@ -171,6 +209,11 @@ class LightningCLIPModule(LightningModule):
 
 
         caption_features5=self.encode_text(cap5)
+        if self.JSE:
+            JSEFactor=-torch.div(4,torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,cache4,caption_features5,cacheim]),2),dim=0))
+            caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
+            #caption_features5=self.gelu(caption_features5)
+            del JSEFactor
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
         #print(caption_features5.requires_grad)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
@@ -192,7 +235,7 @@ class LightningCLIPModule(LightningModule):
         return [optimizerA]
 import wandb
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    with wandb.init(project="6DIMCachespliteinSweep",entity="st7ma784",config=config) as run:
+    with wandb.init(project="6DIMCachespliteinSweepJSE",entity="st7ma784",config=config) as run:
 
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
@@ -207,8 +250,10 @@ def train(config={
         "transformer_width": 512,
         "transformer_heads": 32,
         "transformer_layers": 4,
+        "JSE":False,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
+                                JSE=config["JSE"],
                                     train_batch_size=config["batch_size"],
                                     embed_dim= config[ "embed_dim"],
                                     transformer_width= config["transformer_width"],
@@ -230,9 +275,11 @@ def train(config={
             auto_select_gpus=True,
             #profiler="advanced",
             logger=logtool,
-            strategy="ddp",#deepspeed_stage_1
+            #strategy="ddp",
+            #num_nodes=os.getenv("SLURM_NNODES",1),
             callbacks=callbacks,
             #gradient_clip_val=0.25,
+            fast_dev_run=False,
             precision=config["precision"]
     )
     if config["batch_size"] !=1:
@@ -251,5 +298,6 @@ if __name__ == '__main__':
         "transformer_width": 256,
         "transformer_heads": 16,
         "transformer_layers": 4,
+        "JSE":True,
     }
     train(config)
