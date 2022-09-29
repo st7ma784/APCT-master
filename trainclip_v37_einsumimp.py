@@ -109,7 +109,7 @@ class LightningCLIPModule(LightningModule):
         self.freeze()
     #     #import clip model here]
         valmodel,_ = clip.load("ViT-B/32", device=self.device)
-        self.cka = CKA(self.encode_text, valmodel.encode_text,device=self.device)
+        #self.cka = CKA(self.encode_text, valmodel.encode_text,device=self.device)
 
     #     pass
     
@@ -266,7 +266,7 @@ def train(config={
         "JSE":False,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                JSE=config["JSE"],
+                                JSE=config.get("JSE",False),
                                     train_batch_size=config["batch_size"],
                                     embed_dim= config[ "embed_dim"],
                                     transformer_width= config["transformer_width"],
