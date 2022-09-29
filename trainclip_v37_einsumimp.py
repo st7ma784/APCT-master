@@ -10,7 +10,8 @@ from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
-
+import clip
+import torch_cka
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
@@ -103,15 +104,27 @@ class LightningCLIPModule(LightningModule):
         x = self.ln_final(x).type(self.dtype)
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x.contiguous()
-    # def on_validation_epoch_start(self):
-    #     self.eval()
-    #     self.freeze()
+    def on_validation_epoch_start(self):
+        self.eval()
+        self.freeze()
     #     #import clip model here]
-    #     pass
+        valmodel,_ = clip.load("ViT-B/32", device=self.device)
+        self.cka = CKA(self.encode_text, valmodel.encode_text,device=self.device)
 
-    # def validation_step(self,batch,*args):
+    #     pass
+    
+    def validation_step(self,batch,*args):
+        
+        self.cka.compare(batch) # secondary dataloader is optional
+
+        self.log("CKASTEP",self.cka.export())  # returns a dict that contains model names, layer names
+                       
     #     #do CKA test of model compared to CLIP
     #     pass
+    def on_validation_epoch_end(self):
+        del self.cka
+        self.unfreeze()
+        self.train()
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         # access your optimizers with use_pl_optimizer=False. Default is True,
         # setting use_pl_optimizer=True will maintain plugin/precision support
