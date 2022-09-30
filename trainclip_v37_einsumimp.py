@@ -146,12 +146,12 @@ class LightningCLIPModule(LightningModule):
             cache5=cache[:,4]#.to(torch.device("cpu"),non_blocking=True)
             del cache
         cacheim=self.encode_image(batch[0])
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
-            print(JSEFactor)
-            #cacheim=torch.mul(cacheim,JSEFactor)
-            #cacheim=self.gelu(cacheim)
-            del JSEFactor
+        # if self.JSE:
+        #     JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
+        #     print(JSEFactor)
+        #     #cacheim=torch.mul(cacheim,JSEFactor)
+        #     #cacheim=self.gelu(cacheim)
+        #     del JSEFactor
 
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)
@@ -167,13 +167,13 @@ class LightningCLIPModule(LightningModule):
 
         caption_features1=self.encode_text(cap1)
         #print(caption_features1.requires_grad)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
-            #print(JSEFactor)
+        # if self.JSE:
+        #     #JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
+        #     #print(JSEFactor)
 
-            #caption_features1=torch.mul(caption_features1,JSEFactor)
-            #caption_features1=self.gelu(caption_features1)
-            del JSEFactor
+        #     caption_features1=torch.mul(caption_features1,.96)
+        #     #caption_features1=self.gelu(caption_features1)
+        #     #del JSEFactor
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,caption_features1,cache2)),labels)
 
@@ -184,14 +184,14 @@ class LightningCLIPModule(LightningModule):
 
         caption_features2=self.encode_text(cap2)
         #print(caption_features2.requires_grad)
-        if self.JSE:
+        # if self.JSE:
 
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,caption_features2,cache3,cache4,cache5,cacheim]),2),dim=0))
-            #print(JSEFactor)
+        #     #JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,caption_features2,cache3,cache4,cache5,cacheim]),2),dim=0))
+        #     #print(JSEFactor)
 
-            #caption_features2=torch.mul(caption_features2,JSEFactor)
-            #caption_features2=self.gelu(caption_features2)
-            del JSEFactor
+        #     #caption_features2=torch.mul(caption_features2,JSEFactor)
+        #     #caption_features2=self.gelu(caption_features2)
+        #     #del JSEFactor
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)        
         self.manual_backward(loss,retain_graph=True)
@@ -201,11 +201,11 @@ class LightningCLIPModule(LightningModule):
 
         caption_features3=self.encode_text(cap3)
         #print(caption_features3.requires_grad)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,caption_features3,cache4,cache5,cacheim]),2),dim=0))
-            #caption_features3=torch.mul(caption_features3,JSEFactor)
-            #caption_features3=self.gelu(caption_features3)
-            del JSEFactor
+        # if self.JSE:
+        #     #JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,caption_features3,cache4,cache5,cacheim]),2),dim=0))
+        #     #caption_features3=torch.mul(caption_features3,JSEFactor)
+        #     #caption_features3=self.gelu(caption_features3)
+        #     #del JSEFactor
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",caption_features3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
         self.manual_backward(loss,retain_graph=True)
@@ -214,11 +214,12 @@ class LightningCLIPModule(LightningModule):
 
 
         caption_features4=self.encode_text(cap4)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,caption_features4,cache5,cacheim]),2),dim=0))
-            #caption_features4=torch.mul(caption_features4,JSEFactor)
-            #caption_features4=self.gelu(caption_features4)
-            del JSEFactor
+        # if self.JSE:
+        #     #JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,caption_features4,cache5,cacheim]),2),dim=0))
+        #     #caption_features4=torch.mul(caption_features4,JSEFactor)
+        #     #caption_features4=self.gelu(caption_features4)
+        #     #del JSEFactor
+
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
         #print(caption_features4.requires_grad)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,caption_features4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
@@ -228,11 +229,11 @@ class LightningCLIPModule(LightningModule):
 
 
         caption_features5=self.encode_text(cap5)
-        if self.JSE:
-            JSEFactor=-torch.div(4,torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,cache4,caption_features5,cacheim]),2),dim=0))
-            #caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
-            #caption_features5=self.gelu(caption_features5)
-            del JSEFactor
+        # if self.JSE:
+        #     JSEFactor=-torch.div(4,torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,cache4,caption_features5,cacheim]),2),dim=0))
+        #     #caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
+        #     #caption_features5=self.gelu(caption_features5)
+        #     del JSEFactor
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
         #print(caption_features5.requires_grad)
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
@@ -308,15 +309,15 @@ def train(config={
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
-        "batch_size":24, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
+        "batch_size":25, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
         #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
         # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
-        "learning_rate":2e-3,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+        "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
         "precision":'bf16',         #[32,16,'bf16']
-        "embed_dim": 128,
+        "embed_dim": 256,
         "transformer_width": 256,
         "transformer_heads": 16,
-        "transformer_layers": 4,
+        "transformer_layers": 5,
         "JSE":True,
     }
     train(config)
