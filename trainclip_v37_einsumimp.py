@@ -149,8 +149,8 @@ class LightningCLIPModule(LightningModule):
         if self.JSE:
             JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
             print(JSEFactor)
-            cacheim=torch.mul(cacheim,JSEFactor)
-            cacheim=self.gelu(cacheim)
+            #cacheim=torch.mul(cacheim,JSEFactor)
+            #cacheim=self.gelu(cacheim)
             del JSEFactor
 
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
@@ -171,7 +171,7 @@ class LightningCLIPModule(LightningModule):
             JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
             #print(JSEFactor)
 
-            caption_features1=torch.mul(caption_features1,JSEFactor)
+            #caption_features1=torch.mul(caption_features1,JSEFactor)
             #caption_features1=self.gelu(caption_features1)
             del JSEFactor
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
@@ -189,7 +189,7 @@ class LightningCLIPModule(LightningModule):
             JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,caption_features2,cache3,cache4,cache5,cacheim]),2),dim=0))
             #print(JSEFactor)
 
-            caption_features2=torch.mul(caption_features2,JSEFactor)
+            #caption_features2=torch.mul(caption_features2,JSEFactor)
             #caption_features2=self.gelu(caption_features2)
             del JSEFactor
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
@@ -203,7 +203,7 @@ class LightningCLIPModule(LightningModule):
         #print(caption_features3.requires_grad)
         if self.JSE:
             JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,caption_features3,cache4,cache5,cacheim]),2),dim=0))
-            caption_features3=torch.mul(caption_features3,JSEFactor)
+            #caption_features3=torch.mul(caption_features3,JSEFactor)
             #caption_features3=self.gelu(caption_features3)
             del JSEFactor
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
@@ -216,7 +216,7 @@ class LightningCLIPModule(LightningModule):
         caption_features4=self.encode_text(cap4)
         if self.JSE:
             JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,caption_features4,cache5,cacheim]),2),dim=0))
-            caption_features4=torch.mul(caption_features4,JSEFactor)
+            #caption_features4=torch.mul(caption_features4,JSEFactor)
             #caption_features4=self.gelu(caption_features4)
             del JSEFactor
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
@@ -230,7 +230,7 @@ class LightningCLIPModule(LightningModule):
         caption_features5=self.encode_text(cap5)
         if self.JSE:
             JSEFactor=-torch.div(4,torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,cache4,caption_features5,cacheim]),2),dim=0))
-            caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
+            #caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
             #caption_features5=self.gelu(caption_features5)
             del JSEFactor
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
