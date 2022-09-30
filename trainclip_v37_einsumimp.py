@@ -115,12 +115,12 @@ class LightningCLIPModule(LightningModule):
     
     def validation_step(self,batch,*args):
         
-        self.cka.compare(batch) # secondary dataloader is optional
+        #self.cka.compare(batch) # secondary dataloader is optional
 
-        self.log("CKASTEP",self.cka.export())  # returns a dict that contains model names, layer names
+        #self.log("CKASTEP",self.cka.export())  # returns a dict that contains model names, layer names
                        
     #     #do CKA test of model compared to CLIP
-    #     pass
+        pass
     def on_validation_epoch_end(self):
         del self.cka
         self.unfreeze()
