@@ -16,9 +16,6 @@ dataloader = DataLoader(Dataset,
                          num_workers=8,
                          prefetch_factor=4,
                          pin_memory=True,
-                     
-                         
-                         
                          )  # Don't forget to seed your dataloader
 
 
@@ -96,7 +93,7 @@ def _BHSIC( K, L):
         return result
 
 num_batches = len(dataloader)
-RESULTS=torch.zeros((N,M))
+RESULTS=torch.zeros((N,M),device=device)
 for x1 in tqdm(dataloader):
     i=x1[0].to(device,non_blocking=True)
     num_batches = len(dataloader)
@@ -117,3 +114,8 @@ for x1 in tqdm(dataloader):
     cka.res_matrix = torch.div(cka.m1_matrix, torch.sqrt(torch.abs(torch.mul(cka.hsic_matrix,cka.m2_matrix)))+0.000001)
     RESULTS=torch.add(RESULTS,cka.res_matrix)
 
+
+import torchvision.transforms.functional as TF
+img = TF.to_pil_image(RESULTS)
+img.save('results.png')
+img.show()
