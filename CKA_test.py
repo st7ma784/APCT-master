@@ -96,7 +96,7 @@ def _BHSIC( K, L):
         return result
 
 num_batches = len(dataloader)
-
+RESULTS=torch.zeros((N,M))
 for x1 in tqdm(dataloader):
     i=x1[0].to(device,non_blocking=True)
     num_batches = len(dataloader)
@@ -115,4 +115,5 @@ for x1 in tqdm(dataloader):
     cka.hsic_matrix=_BHSIC2(torch.stack(features,dim=0)).unsqueeze(1)#/(50 * (50 - 3))
     cka.m1_matrix =_BHSIC(torch.stack(features,dim=0),torch.stack(features2,dim=0))#/(50 * (50 - 3))
     cka.res_matrix = torch.div(cka.m1_matrix, torch.sqrt(torch.abs(torch.mul(cka.hsic_matrix,cka.m2_matrix)))+0.000001)
-    print(cka.res_matrix)
+    RESULTS=torch.add(RESULTS,cka.res_matrix)
+
