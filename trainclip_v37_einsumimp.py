@@ -122,7 +122,7 @@ class LightningCLIPModule(LightningModule):
     #     #do CKA test of model compared to CLIP
         pass
     def on_validation_epoch_end(self):
-        del self.cka
+        #del self.cka
         self.unfreeze()
         self.train()
     def training_step(self, batch, batch_idx,optimizer_idx=0):
