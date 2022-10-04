@@ -1,17 +1,30 @@
 
-from calendar import c
 import pytorch_lightning
 from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
 import os
+from functools import partial
 import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 import clip
-import torch_cka
+from warnings import warn
+from mpl_toolkits import axes_grid1
+import matplotlib.pyplot as plt
+
+def add_colorbar(im, aspect=10, pad_fraction=0.5, **kwargs):
+    """Add a vertical color bar to an image plot."""
+    divider = axes_grid1.make_axes_locatable(im.axes)
+    width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
+    pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
+    current_ax = plt.gca()
+    cax = divider.append_axes("right", size=width, pad=pad)
+    plt.sca(current_ax)
+    return im.axes.figure.colorbar(im, cax=cax, **kwargs)
+
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
@@ -68,7 +81,7 @@ class LightningCLIPModule(LightningModule):
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
-       
+        self.handles=[]
 
 
     def build_attention_mask(self):
@@ -108,23 +121,107 @@ class LightningCLIPModule(LightningModule):
         self.eval()
         self.freeze()
     #     #import clip model here]
-        valmodel,_ = clip.load("ViT-B/32", device=self.device)
-        #self.cka = CKA(self.encode_text, valmodel.encode_text,device=self.device)
+        self.model2,_ = clip.load("ViT-B/32", device=self.device)
 
-    #     pass
-    
-    def validation_step(self,batch,*args):
-        
-        #self.cka.compare(batch) # secondary dataloader is optional
+        self.N = len(list(self.modules()))
+        self.M = len(list(self.model2.modules()))
 
-        #self.log("CKASTEP",self.cka.export())  # returns a dict that contains model names, layer names
-                       
-    #     #do CKA test of model compared to CLIP
-        pass
-    def on_validation_epoch_end(self):
-        #del self.cka
+      
+        self._insert_hooks()
+        self.eval()
+        self.model2.eval()
+    def on_validation_step(self,batch,*args):
+
+        self.model1_features = {}  #reset list of forward hooks
+        self.model2_features = {}  
+        self(batch[0]) #run through main mode
+        ###If your model has supervised data, then perhaps do a loss with your date here!
+        self.model2(batch[0])# to compare supervision model
+        out=torch.stack([self._orig_HSIC(K, K) for K in self.model1_features.values()])
+        self.hsic_matrix0=torch.add(self.hsic_matrix0,out) 
+        out=torch.stack([self._orig_HSIC(L, L) for L in self.model2_features.values()])
+        self.hsic_matrix2=torch.add(self.hsic_matrix2,out)
+        out=torch.stack([self._orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()])
+        self.hsic_matrix1=torch.add(self.hsic_matrix1,out.reshape(self.N,self.M))
+        self.hsic_matrix = self.hsic_matrix1 / (self.hsic_matrix0.unsqueeze(1).sqrt()*self.hsic_matrix2.unsqueeze(0).sqrt())
+        if not torch.isnan(self.hsic_matrix).any():
+            warn("HSIC computation resulted in NANs")
+            
+    def on_validation_epoch_end(self,batch_idx):
         self.unfreeze()
         self.train()
+        self.plot_results("HSIC{}".format(batch_idx))
+        for handle in self.handles:
+            handle.remove()
+        del self.model2
+
+    def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
+        with torch.no_grad():
+            if model == "model1":
+                X = out.flatten(1)
+                self.model1_features[name] = (X @ X.t()).fill_diagonal_(0)
+            elif model == "model2":
+                X = out.flatten(1)
+                self.model2_features[name] = (X @ X.t()).fill_diagonal_(0)
+            else:
+                raise RuntimeError("Unknown model name for _log_layer.")
+
+    def _insert_hooks(self):
+        for name, layer in self.named_modules():
+            if self.model1_layers is not None:
+                if name in self.model1_layers:
+                    self.model1_info['Layers'] += [name]
+                    self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+            else:
+                self.model1_info['Layers'] += [name]
+                self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+
+        # Model 2
+        for name, layer in self.model2.named_modules():
+            if self.model2_layers is not None:
+                if name in self.model2_layers:
+                    self.model2_info['Layers'] += [name]
+                    self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
+            else:
+
+                self.model2_info['Layers'] += [name]
+                self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
+
+   
+  
+    def export(self):
+        """
+        Exports the CKA data along with the respective model layer names.
+        :return:
+        """
+        return {
+            "model1_name": "Trained",
+            "model2_name": "PretrainedModel",
+            "CKA": self.hsic_matrix,
+            "model1_layers": self.named_modules(),
+            "model2_layers": self.model2.named_modules(),
+        }
+
+    def plot_results(self,
+                     save_path: str = None,
+                     title: str = None):
+        fig, ax = plt.subplots()
+        im = ax.imshow(self.hsic_matrix, origin='lower', cmap='magma')
+        ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)
+        ax.set_ylabel(f"Layers {self.model1_info['Name']}", fontsize=15)
+
+        if title is not None:
+            ax.set_title(f"{title}", fontsize=18)
+        else:
+            ax.set_title(f"{self.model1_info['Name']} vs {self.model2_info['Name']}", fontsize=18)
+
+        add_colorbar(im)
+        plt.tight_layout()
+
+        if save_path is not None:
+            plt.savefig(save_path, dpi=300)
+
+    
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         # access your optimizers with use_pl_optimizer=False. Default is True,
         # setting use_pl_optimizer=True will maintain plugin/precision support
@@ -295,8 +392,8 @@ def train(config={
             auto_select_gpus=True,
             #profiler="advanced",
             logger=logtool,
-            #strategy="ddp",
-            #num_nodes=os.getenv("SLURM_NNODES",1),
+            strategy="ddp",
+            num_nodes=os.getenv("SLURM_NNODES",1),
             callbacks=callbacks,
             #gradient_clip_val=0.25,
             fast_dev_run=False,
