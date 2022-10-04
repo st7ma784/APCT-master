@@ -150,7 +150,9 @@ class LightningCLIPModule(LightningModule):
     def on_validation_epoch_end(self,batch_idx):
         self.unfreeze()
         self.train()
-        self.plot_results("HSIC{}".format(batch_idx))
+        self.plot_results("HSIC{}.jpg".format(batch_idx))
+        self.log_image(key="HSIC{}".format(batch_idx), images=["HSIC{}.jpg".format(batch_idx)])
+
         for handle in self.handles:
             handle.remove()
         del self.model2
@@ -406,7 +408,7 @@ def train(config={
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
     config={
-        "batch_size":24, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
+        "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
         #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
         # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
         "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
