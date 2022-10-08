@@ -52,8 +52,8 @@ if __name__ == '__main__':
     #and removed memory per node and adjusted to not include cpu counts as this is done automatically in bede 
     #del cluster.per_experiment_nb_cpus
     cluster.cpus_per_task=0
-    cluster.per_experiment_nb_gpus = 2
-    cluster.per_experiment_nb_nodes = 2
+    cluster.per_experiment_nb_gpus = 1
+    cluster.per_experiment_nb_nodes = 1
     #cluster.gpu_type = '1080ti'
 
     # set a walltime of 24 hours,0, minues
@@ -64,4 +64,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
     print(cluster.__dir__())
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_gpu(train, nb_trials=20, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
