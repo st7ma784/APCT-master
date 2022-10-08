@@ -52,7 +52,7 @@ if __name__ == '__main__':
     #and removed memory per node and adjusted to not include cpu counts as this is done automatically in bede 
     #del cluster.per_experiment_nb_cpus
     cluster.cpus_per_task=0
-    cluster.per_experiment_nb_gpus = 4
+    cluster.per_experiment_nb_gpus = 2
     cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
 
