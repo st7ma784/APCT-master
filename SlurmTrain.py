@@ -1,6 +1,6 @@
 from test_tube import SlurmCluster
 #from trainclip_v2 import train as train_clip
-from trainclip_v2 import testtrainfunc as train_clip
+from trainclip_v2 import testtrainfunc as train
 
 
 from HOparser import parser
