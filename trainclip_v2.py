@@ -189,6 +189,12 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
         print('PID  : {}'.format(os.getpid()))
         print('Executing for 15 secs')
         time.sleep(15)
+        print('Process ended {}'.format(dt.now()))
+        print(config) 
+        print(dir)
+        print(devices)
+        print(accelerator)
+        print(Dataset)
         print('Process finished {}\n'.format(dt.now()))
         import torch
         print("CUDA? {}".format(torch.cuda.is_available()))
