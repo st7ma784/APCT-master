@@ -121,7 +121,7 @@ class COCODataModule(pl.LightningDataModule):
             #print("Location", location) #/Data/train2014.zip
             #time.sleep(5)
             #print('Downloading',url)
-            obj=SmartDL(url,os.path.join(location,name),progress_bar=False,)
+            obj=SmartDL(url,os.path.join(location,name),progress_bar=False, verify=False)
             obj.FileName=name
             if name.endswith(".zip"):
                 name=name[:-4]
@@ -134,7 +134,7 @@ class COCODataModule(pl.LightningDataModule):
             if not os.path.exists(os.path.join(location,name+".zip")):
                 print(os.path.join(location,name))
                 objs.append(obj)
-                obj.start(blocking=False)
+                obj.start(blocking=False,  )#There are security problems with Hostename 'images.cocodataset.org' and Certificate 'images.cocodataset.org' so we need to disable the SSL verification
         for obj in objs:
             while not obj.isFinished():
                 time.sleep(5)
