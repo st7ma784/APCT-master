@@ -178,7 +178,7 @@ class LightningCLIPModule(LightningModule):
       
         return [optimizer]
 import wandb
-def testtrainfunc(dir=None, *args):
+def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     import time
     import os
     import socket
