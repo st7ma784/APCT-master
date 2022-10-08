@@ -32,8 +32,9 @@ if __name__ == '__main__':
 
     # Add commands to the non-SLURM portion.
     
-    cluster.add_command('source activate open-ce') # We'll assume that on the BEDE/HEC cluster you've named you conda env after the standard...
-
+    cluster.add_command('export CONDADIR=/nobackup/projects/bdlan05/$USER') # We'll assume that on the BEDE/HEC cluster you've named you conda env after the standard...
+    cluster.add_command('source $CONDADIR/miniconda3/etc/profile.d/conda.sh') # ...conda setup script
+    cluster.add_command('conda activate $CONDADIR/miniconda/envs/open-ce') # ...and activate the environment
     # Add custom SLURM commands which show up as:
     # #comment
     # #SBATCH --cmd=value
@@ -55,9 +56,6 @@ if __name__ == '__main__':
     cluster.per_experiment_nb_nodes = 2
     #cluster.gpu_type = '1080ti'
 
-    # we'll request 100GB of memory per node
-    #cluster.memory_mb_per_node = 0
-
     # set a walltime of 24 hours,0, minues
     cluster.job_time = '24:00:00'
 
@@ -66,4 +64,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
     print(cluster.__dir__())
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_gpu(train, nb_trials=2, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_gpu(train, nb_trials=20, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
