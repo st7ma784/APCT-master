@@ -16,6 +16,5 @@ export SLURM_NNODES=$SLURM_JOB_NUM_NODES
     
 export CONDADIR=/nobackup/projects/bdlan05/$USER
 source $CONDADIR/miniconda3/etc/profile.d/conda.sh
-conda activate $CONDADIR/miniconda/envs/open-ce
 #source activate open-ce
-srun python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py
+srun conda run -p $CONDADIR/miniconda3/envs/envs/open-ce python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py
