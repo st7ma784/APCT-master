@@ -1,12 +1,12 @@
 from test_tube import SlurmCluster
 #from trainclip_v2 import train as train_clip
 from trainclip_v2 import testtrainfunc as train
+from functools import partial
 
+train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
 
 from HOparser import parser
 if __name__ == '__main__':
-    from functools import partial
-    #train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
 
 
     argsparser = parser(strategy='random_search')
@@ -16,7 +16,7 @@ if __name__ == '__main__':
     cluster = SlurmCluster(
         hyperparam_optimizer=hyperparams,
         log_path="/nobackup/projects/bdlan05/smander3/logs/",#hyperparams.log_path,
-        python_cmd='conda run -p $CONDADIR/miniconda/envs/open-ce python3',
+        python_cmd='python3',
 #        test_tube_exp_name="PL_test"
     )
 
@@ -34,6 +34,7 @@ if __name__ == '__main__':
     
     cluster.add_command('export CONDADIR=/nobackup/projects/bdlan05/$USER') # We'll assume that on the BEDE/HEC cluster you've named you conda env after the standard...
     cluster.add_command('source $CONDADIR/miniconda3/etc/profile.d/conda.sh') # ...conda setup script
+    cluster.add_command('conda activate $CONDADIR/miniconda/envs/open-ce') # ...and activate the conda environment
     #cluster.add_command('') # ...and activate the environment
     # Add custom SLURM commands which show up as:
     # #comment
