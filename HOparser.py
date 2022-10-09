@@ -5,8 +5,8 @@ class parser(HyperOptArgumentParser):
 
         super().__init__( *args,strategy=strategy, add_help=False) # or random search
         #more info at https://williamfalcon.github.io/test-tube/hyperparameter_optimization/HyperOptArgumentParser/
-        self.add_argument("--dir",default="/nobackup/projects/$USER/data",type=str)
-        self.add_argument("--log_path",default="/nobackup/projects/$USER/logs/",type=str)
+        self.add_argument("--dir",default="/nobackup/projects/bdlan05/$USER/data",type=str)
+        self.add_argument("--log_path",default="/nobackup/projects/bdlan05/$USER/logs/",type=str)
         self.opt_list("--learning_rate", default=0.001, type=float, options=[2e-4,1e-4,5e-5,1e-5,4e-6], tunable=True)
         self.opt_list("--batch_size", default=8, type=float, options=[8,12,16, 20,24], tunable=True)
         self.opt_list("--JSE", default=True, type=bool, options=[True,False], tunable=True)
