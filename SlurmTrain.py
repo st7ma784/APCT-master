@@ -3,7 +3,7 @@ from test_tube import SlurmCluster
 from trainclip_v2 import wandbtrain as train
 from functools import partial
 
-train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
+#train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data")
 
 from HOparser import parser
 if __name__ == '__main__':
