@@ -203,7 +203,7 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
     print([torch.cuda.get_device_name(d) for d in range(torch.cuda.device_count())])
     with wandb.init(project="BEDETEST",entity="st7ma784",name="BEDETEST",config=config) as run:
         run.log({"test":1})  # only log first rank
-def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+def wandbtrain(config=None,dir=None,devices="auto",accelerator="auto",Dataset=None):
     if config is not None and not isinstance(config,dict):
         #print("Config is not a dict")
         config=config.__dict__
@@ -215,6 +215,8 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #config=logtool.experiment.config
         #print("experiment {}".format(logtool.experiment.config))
         print("WANDB run.CONFIG {}".format(run.config))
+        if dir is None:
+            dir=run.config.get("dir","/Data2")
         train(run.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batch_size":16,
