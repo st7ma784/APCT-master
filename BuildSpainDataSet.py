@@ -165,9 +165,11 @@ class COCODataModule(pl.LightningDataModule):
                 dir=os.path.join(self.data_dir,version)
                 if not os.path.exists(annfile):
                     print("Missing annotation file",annfile)
-
+                
+                print("Loading train dataset",annfile)
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
+                
                 #print("dset:",dset.__dir__())
 
                 if len(dset)>0:
