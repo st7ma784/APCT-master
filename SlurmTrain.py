@@ -1,6 +1,6 @@
 from test_tube import SlurmCluster
 #from trainclip_v2 import train as train_clip
-from trainclip_v2 import wandbtrain as train
+from trainclip_v37_einsumimp import wandbtrain as train
 from HOparser import parser
 if __name__ == '__main__':
 
