@@ -388,12 +388,15 @@ def train(config={
         from BuildSpainDataSet import COCODataModule
 
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
-    print("Training with config: {}".format(config))
+    # print("Training with config: {}".format(config))
     Dataset.batch_size=config["batch_size"]
     callbacks=[
         TQDMProgressBar(),
         EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
     ]
+    p=config.get("precision",'bf16')
+    if isinstance(p,str):
+        p='bf16' if p=="bf16" else int(p)
     trainer=pytorch_lightning.Trainer(
             devices=1,
             accelerator=accelerator,
@@ -406,7 +409,7 @@ def train(config={
             callbacks=callbacks,
             #gradient_clip_val=0.25,
             fast_dev_run=False,
-            precision=config["precision"]
+            precision=p
     )
     if config["batch_size"] !=1:
         
