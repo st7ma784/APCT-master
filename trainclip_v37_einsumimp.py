@@ -82,7 +82,7 @@ class LightningCLIPModule(LightningModule):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
         self.handles=[]
-
+        print("ici")
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
@@ -358,7 +358,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #print("Config is not a dict")
         config=config.__dict__
         #print("as dict: {}".format(config))
-    # with wandb.init(project="6DIMCachespliteinSweepJSE",entity="st7ma784",config=config) as run:
+    # with wandb.init(project="6DIMCachespliteinSweepJSE",entity="st7ma784",config=config) as run: This plays up with multiple CPUS of BEDE... try JUST the logger info. 
 
     logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
     #print(logtool.__dir__())
