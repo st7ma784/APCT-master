@@ -205,7 +205,10 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
         run.log({"test":1})  # only log first rank
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     if not isinstance(config,dict):
+        print("Config is not a dict")
+        print(config.__dir__())
         config=config.__dict__
+
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
         logtool= pytorch_lightning.loggers.WandbLogger( name="BEDEContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
