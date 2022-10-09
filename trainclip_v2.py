@@ -204,10 +204,11 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
     with wandb.init(project="BEDETEST",entity="st7ma784",name="BEDETEST",config=config) as run:
         run.log({"test":1})  # only log first rank
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    if not isinstance(config,dict):
-        print("Config is not a dict")
-        print(config.__dir__())
-        config=config.__dict__
+    # if not isinstance(config,dict):
+    print("Config is not a dict")
+    print(config)
+
+    config=config.__dict__
 
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
