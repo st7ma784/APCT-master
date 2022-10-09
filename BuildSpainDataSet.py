@@ -163,6 +163,8 @@ class COCODataModule(pl.LightningDataModule):
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
                 dir=os.path.join(self.data_dir,version)
+                if not os.path.exists(annfile):
+                    print("Missing annotation file",annfile)
 
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
