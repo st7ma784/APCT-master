@@ -362,7 +362,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
 
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
-        config=logtool.experiment.config
+        #config=logtool.experiment.config
         print("WANDB CONFIG",config)
         dir=run.config.get("dir",dir)
 
