@@ -244,7 +244,7 @@ def train(config={
             precision=config["precision"]
     )
     if config["batch_size"] !=1:
-        
+        print("precision {}".format(config["precision"]))
         trainer.fit(model,Dataset)
     else:
         return 0 #No need to train if batch size is 1
