@@ -241,7 +241,7 @@ def train(config={
             strategy="ddp",
             #callbacks=callbacks,
             gradient_clip_val=0.25,
-            precision=config.got("precision",'bf16')
+            precision=config.get("precision",'bf16')
     )
     if config["batch_size"] !=1:
         print("precision {}".format(config["precision"]))
