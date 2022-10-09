@@ -228,8 +228,8 @@ def train(config={
     print("Model created")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
-        print(dir)
-        print(config)
+        #print(dir)
+        #print(config)
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     Dataset.batch_size=config["batch_size"]
     trainer=pytorch_lightning.Trainer(
