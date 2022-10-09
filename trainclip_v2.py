@@ -205,15 +205,15 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
         run.log({"test":1})  # only log first rank
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     if config is not None and not isinstance(config,dict):
-        print("Config is not a dict")
+        #print("Config is not a dict")
         config=config.__dict__
-        print("as dict: {}".format(config))
+        #print("as dict: {}".format(config))
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
         logtool= pytorch_lightning.loggers.WandbLogger( name="BEDEContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
         #config=logtool.experiment.config
-        print("experiment {}".format(logtool.experiment.config))
+        #print("experiment {}".format(logtool.experiment.config))
         print("WANDB run.CONFIG {}".format(run.config))
         train(run.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
@@ -227,7 +227,8 @@ def train(config={
     print("Model created")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
-
+        print(dir)
+        print(config)
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     Dataset.batch_size=config["batch_size"]
     trainer=pytorch_lightning.Trainer(
