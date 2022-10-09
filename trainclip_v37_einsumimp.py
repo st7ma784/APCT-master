@@ -388,6 +388,7 @@ def train(config={
         from BuildSpainDataSet import COCODataModule
 
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
+    print("Training with config: {}".format(config))
     Dataset.batch_size=config["batch_size"]
     callbacks=[
         TQDMProgressBar(),
