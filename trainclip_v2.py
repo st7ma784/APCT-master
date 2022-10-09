@@ -241,6 +241,7 @@ def train(config={
             #profiler="advanced",
             logger=logtool,
             strategy="ddp",
+            num_nodes=1,
             #callbacks=callbacks,
             gradient_clip_val=0.25,
             #precision=config.get("precision",'bf16')
