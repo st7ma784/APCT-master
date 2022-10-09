@@ -6,7 +6,7 @@ from trainclip_v2 import testtrainfunc as train
 from HOparser import parser
 if __name__ == '__main__':
     from functools import partial
-    train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
+    #train=partial(train,dir="/nobackup/projects/bdlan05/smander3/data/")
 
 
     argsparser = parser(strategy='random_search')
