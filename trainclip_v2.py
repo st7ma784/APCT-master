@@ -167,7 +167,7 @@ class LightningCLIPModule(LightningModule):
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False)
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         return {"loss": loss}
 
             
@@ -202,11 +202,11 @@ def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Data
     
     print([torch.cuda.get_device_name(d) for d in range(torch.cuda.device_count())])
     with wandb.init(project="BEDETEST",entity="st7ma784",name="BEDETEST",config=config) as run:
-        run.log({"test":1})
+        run.log({"test":1})  # only log first rank
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
-        logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( name="BEDEContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
         config=logtool.experiment.config
         print("WANDB CONFIG",config)
