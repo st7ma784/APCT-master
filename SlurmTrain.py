@@ -33,6 +33,7 @@ if __name__ == '__main__':
     # Add commands to the non-SLURM portion.
     
     cluster.add_command('export CONDADIR=/nobackup/projects/bdlan05/$USER') # We'll assume that on the BEDE/HEC cluster you've named you conda env after the standard...
+    cluster.add_command('export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc') # 
     cluster.add_command('source $CONDADIR/miniconda3/etc/profile.d/conda.sh') # ...conda setup script
     cluster.add_command('conda activate $CONDADIR/miniconda/envs/open-ce') # ...and activate the conda environment
     #cluster.add_command('') # ...and activate the environment
