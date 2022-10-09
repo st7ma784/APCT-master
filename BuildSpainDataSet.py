@@ -28,9 +28,12 @@ class COCODataset(CocoCaptions):
                 for file in files:
                     Path(os.path.join(root, file)).touch()
         Path(annFile).touch()
-        assert os.path.exists(root),'root does not exist'
+
+        if not os.path.exists(root):
+            print("root does not exist {}".format(root))
         #print('Error: root directory does not exist: {}'.format(root))
-        assert os.path.exists(annFile),'annFile does not exist' 
+        if not os.path.exists(annFile):
+            print('annFile does not exist {}'.format(annFile)) 
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         #print('Done')
