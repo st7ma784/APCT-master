@@ -232,6 +232,8 @@ def train(config={
         #print(config)
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     Dataset.batch_size=config["batch_size"]
+    print("precision {}".format(config["precision"]))
+
     trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
