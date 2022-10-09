@@ -66,7 +66,7 @@ class LightningCLIPModule(LightningModule):
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
-       
+        print("done")
 
 
     def build_attention_mask(self):
@@ -215,7 +215,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #config=logtool.experiment.config
         print("experiment {}".format(logtool.experiment.config))
         print("WANDB run.CONFIG {}".format(run.config))
-        train(config,dir,devices,accelerator,Dataset,logtool)
+        train(run.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batch_size":16,
         "learning_rate":2e-4,
@@ -224,6 +224,7 @@ def train(config={
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batch_size"],
                                     adam_epsilon = 1e-8)
+    print("Model created")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
 
