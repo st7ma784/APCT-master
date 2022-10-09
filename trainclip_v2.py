@@ -208,7 +208,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
     print("Config is not a dict")
     print(config)
 
-    config=config.__dict__
+    config=config.__dict__()
 
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
