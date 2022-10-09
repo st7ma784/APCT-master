@@ -215,8 +215,7 @@ def wandbtrain(config=None,dir=None,devices="auto",accelerator="auto",Dataset=No
         #config=logtool.experiment.config
         #print("experiment {}".format(logtool.experiment.config))
         print("WANDB run.CONFIG {}".format(run.config))
-        if dir is None:
-            dir=run.config.get("dir","/Data2")
+        dir=run.config.get("dir",dir)
         train(run.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batch_size":16,
