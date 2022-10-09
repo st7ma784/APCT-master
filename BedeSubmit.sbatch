@@ -13,10 +13,11 @@
 #SBATCH --account=bdlan05
 #SBATCH --partition=gpu
 export SLURM_NNODES=$SLURM_JOB_NUM_NODES
-    
 export CONDADIR=/nobackup/projects/bdlan05/$USER
 export wandb='9cf7e97e2460c18a89429deed624ec1cbfb537bc'
 
 source $CONDADIR/miniconda/etc/profile.d/conda.sh
+conda activate $CONDADIR/miniconda/envs/open-ce # ...and activate the conda environment
+
 #source activate open-ce
-srun conda run -p $CONDADIR/miniconda/envs/open-ce python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py  --data_dir /nobackup/projects/bdlan05/smander3/data/
+srun python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py  --data_dir /nobackup/projects/bdlan05/smander3/data/
