@@ -82,8 +82,8 @@ class LightningCLIPModule(LightningModule):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
         self.handles=[]
-        self.model1_info={}
-        self.model2_info={}
+        self.model1_info={'Name':"SelfCLIP",'Layers':[]}
+        self.model2_info={'Name': "Stock CLIP", 'Layers':[]}
         print("ici")
 
     def build_attention_mask(self):
