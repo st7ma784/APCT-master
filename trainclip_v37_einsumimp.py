@@ -133,9 +133,9 @@ class LightningCLIPModule(LightningModule):
 
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  
-        self(batch[0]) #run through main mode
+        self.encode_image(batch[0]) #run through main mode
         ###If your model has supervised data, then perhaps do a loss with your date here!
-        self.model2(batch[0])# to compare supervision model
+        self.model2.encode_image(batch[0])# to compare supervision model
         out=torch.stack([self._orig_HSIC(K, K) for K in self.model1_features.values()])
         self.hsic_matrix0=torch.add(self.hsic_matrix0,out) 
         out=torch.stack([self._orig_HSIC(L, L) for L in self.model2_features.values()])
