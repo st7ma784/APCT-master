@@ -398,6 +398,7 @@ def train(config={
     p=config['precision']
     if isinstance(p,str):
         p=16 if p=="bf16" else int(p)  ##needed for BEDE
+    print("Launching with precision",p)
     trainer=pytorch_lightning.Trainer(
             devices="auto",
             accelerator=accelerator,
