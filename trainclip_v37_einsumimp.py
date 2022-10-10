@@ -356,6 +356,9 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         config=config.__dict__
         dir=config.get("dir",dir)
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
+        print(logtool.__dir__())
+        logtool.experiment.config=config
+        logtool.log_hyperparams(config)
 
     else: 
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
