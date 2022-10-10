@@ -62,4 +62,4 @@ if __name__ == '__main__':
     cluster.minutes_to_checkpoint_before_walltime = 1
     #print(cluster.__dir__())
     # run the models on the cluster
-    cluster.optimize_parallel_cluster_gpu(train, nb_trials=50, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
+    cluster.optimize_parallel_cluster_gpu(train, nb_trials=10, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
