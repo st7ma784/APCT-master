@@ -127,7 +127,7 @@ class LightningCLIPModule(LightningModule):
         self._insert_hooks()
         self.eval()
         self.model2.eval()
-    def on_validation_step(self,batch,*args):
+    def validation_step(self,batch,*args):
 
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  
