@@ -408,7 +408,7 @@ def train(config={
             strategy="ddp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
-            gradient_clip_val=0.25,
+            #gradient_clip_val=0.25, Not supported for manual optimization
             fast_dev_run=True,
             precision=p
     )
