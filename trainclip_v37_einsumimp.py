@@ -358,12 +358,11 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
 
     else: 
+        #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
         import wandb
         print("here")
         run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
-        print(run.config.__dir__())
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
-
         config=run.config.as_dict()
     print("config",config)
     
