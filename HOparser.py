@@ -12,7 +12,7 @@ class parser(HyperOptArgumentParser):
         self.opt_list("--JSE", default=True, type=bool, options=[True,False], tunable=True)
         self.opt_list("--precision", default=16, options=[16,'bf16'], tunable=False)
         self.opt_list("--transformer_layers", default=12, type=int, options=[3,4,5,6], tunable=True)
-        self.opt_list("--transformer_heads", default=8, type=int, options=[4,8,12,16], tunable=True)
+        self.opt_list("--transformer_heads", default=8, type=int, options=[4,8,16], tunable=True)
         self.opt_list("--embed_dim", default=512, type=int, options=[128,256,512,768], tunable=True)
         self.opt_list("--transformer_width", default=512, type=int, options=[128,256,512,768], tunable=True)
       
