@@ -354,19 +354,15 @@ class LightningCLIPModule(LightningModule):
         return [optimizerA]
  
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+    print(config)
     if config is not None and not isinstance(config,dict):
-        #print("Config is not a dict")
+        
         config=config.__dict__
-        #print("as dict: {}".format(config))
-    # with wandb.init(project="6DIMCachespliteinSweepJSE",entity="st7ma784",config=config) as run: This plays up with multiple CPUS of BEDE... try JUST the logger info. 
 
     logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
-    #print(logtool.__dir__())
-    #config=logtool.experiment.config
-    print("WANDB CONFIG",config)
     dir=config.get("dir",dir)
-
     train(config,dir,devices,accelerator,Dataset,logtool)
+
 def train(config={
         "batch_size":16,
         "learning_rate":2e-3,

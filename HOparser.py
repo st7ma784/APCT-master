@@ -20,7 +20,7 @@ class parser(HyperOptArgumentParser):
 
 
 
-
+# Testing to check param outputs
 if __name__== "__main__":
     myparser=parser()
     hyperparams = myparser.parse_args()
