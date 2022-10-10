@@ -82,6 +82,8 @@ class LightningCLIPModule(LightningModule):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
         self.handles=[]
+        self.model1_info={}
+        self.model2_info={}
         print("ici")
 
     def build_attention_mask(self):
