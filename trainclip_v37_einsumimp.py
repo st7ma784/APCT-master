@@ -363,7 +363,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         import wandb
         run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
         print(run.config.__dir__())
-        config=run.config.__dict__
+        config=run.config.as_dict()
     print("config",config)
     logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
     
