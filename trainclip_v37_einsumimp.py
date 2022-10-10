@@ -351,7 +351,7 @@ class LightningCLIPModule(LightningModule):
         return [optimizerA]
  
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    if config is not None and not isinstance(config,dict):
+    if config is not None:
         
         config=config.__dict__
         dir=config.get("dir",dir)
@@ -359,6 +359,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
 
     else: 
         import wandb
+        print("here")
         run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
         print(run.config.__dir__())
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
