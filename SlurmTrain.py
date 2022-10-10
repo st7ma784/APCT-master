@@ -7,6 +7,7 @@ from HOparser import parser
 class mySlurmCluster(SlurmCluster):
     #overwrte the run function to remove srun
     def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, on_gpu):
+
         sub_commands = []
         job_with_version = '{}v{}'.format(self.job_display_name, exp_i)
 
@@ -67,6 +68,7 @@ class mySlurmCluster(SlurmCluster):
         sub_commands.append('{} {} {}'.format(self.python_cmd, self.script_name, trial_args))
         # build full command with empty lines in between
         full_command = '\n'.join(sub_commands)
+        print("RUNNING ")
         return full_command
 
 
