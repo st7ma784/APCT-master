@@ -122,11 +122,8 @@ class LightningCLIPModule(LightningModule):
         self.freeze()
     #     #import clip model here]
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
-
         self.N = len(list(self.modules()))
         self.M = len(list(self.model2.modules()))
-
-      
         self._insert_hooks()
         self.eval()
         self.model2.eval()
@@ -358,13 +355,16 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         
         config=config.__dict__
         dir=config.get("dir",dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
+
     else: 
         import wandb
         run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
         print(run.config.__dir__())
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
+
         config=run.config.as_dict()
     print("config",config)
-    logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
     
     train(config,dir,devices,accelerator,Dataset,logtool)
 
