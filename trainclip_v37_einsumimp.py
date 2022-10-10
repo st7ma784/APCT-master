@@ -398,10 +398,9 @@ def train(config={
     if isinstance(p,str):
         p='bf16' if p=="bf16" else int(p)
     trainer=pytorch_lightning.Trainer(
-            devices=1,
+            devices="auto",
             accelerator=accelerator,
             max_epochs=40,
-            auto_select_gpus=True,
             #profiler="advanced",
             logger=logtool,
             strategy="ddp",
