@@ -354,7 +354,6 @@ class LightningCLIPModule(LightningModule):
         return [optimizerA]
  
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    print(config)
     if config is not None and not isinstance(config,dict):
         
         config=config.__dict__
@@ -398,7 +397,7 @@ def train(config={
     ]
     p=config['precision']
     if isinstance(p,str):
-        p='bf16' if p=="bf16" else int(p)
+        p=16 if p=="bf16" else int(p)  ##needed for BEDE
     trainer=pytorch_lightning.Trainer(
             devices="auto",
             accelerator=accelerator,
