@@ -352,10 +352,7 @@ class LightningCLIPModule(LightningModule):
  
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     if config is not None:
-        print(config)
         #config=config.__dict__
-        print(config.__dir__())
-        print(config.__dict__)
         config=config.__dict__
         dir=config.get("dir",dir)
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
@@ -382,7 +379,7 @@ def train(config={
         "JSE":False,
     },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                JSE=config.get("JSE",False),
+                                JSE=config["JSE"],
                                     train_batch_size=config["batch_size"],
                                     embed_dim= config[ "embed_dim"],
                                     transformer_width= config["transformer_width"],
