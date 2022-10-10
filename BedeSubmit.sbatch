@@ -20,4 +20,4 @@ source $CONDADIR/miniconda/etc/profile.d/conda.sh
 conda activate $CONDADIR/miniconda/envs/open-ce # ...and activate the conda environment
 
 #source activate open-ce
-srun python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py  --data_dir /nobackup/projects/bdlan05/smander3/data
+python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py  --data_dir /nobackup/projects/bdlan05/smander3/data
