@@ -79,13 +79,13 @@ if __name__ == '__main__':
     argsparser = parser(strategy='random_search')
     hyperparams = argsparser.parse_args()
     # Enable cluster training.
-    cluster = mySlurmCluster(
+    cluster = SlurmCluster(
         hyperparam_optimizer=hyperparams,
         log_path="/nobackup/projects/bdlan05/smander3/logs/",#hyperparams.log_path,
         python_cmd='python3',
 #        test_tube_exp_name="PL_test"
     )
-
+    cluster.__build_slurm_command = mySlurmCluster.__build_slurm_command
     # Email results if your hpc supports it.
     cluster.notify_job_status(
         email='st7ma784@gmail.com', on_done=True, on_fail=True)
