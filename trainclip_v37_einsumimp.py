@@ -167,24 +167,14 @@ class LightningCLIPModule(LightningModule):
 
     def _insert_hooks(self):
         for name, layer in self.named_modules():
-            if self.model1_layers is not None:
-                if name in self.model1_layers:
-                    self.model1_info['Layers'] += [name]
-                    self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-            else:
-                self.model1_info['Layers'] += [name]
-                self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+            self.model1_info['Layers'] += [name]
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
 
         # Model 2
         for name, layer in self.model2.named_modules():
-            if self.model2_layers is not None:
-                if name in self.model2_layers:
-                    self.model2_info['Layers'] += [name]
-                    self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
-            else:
 
-                self.model2_info['Layers'] += [name]
-                self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
+            self.model2_info['Layers'] += [name]
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
 
    
   

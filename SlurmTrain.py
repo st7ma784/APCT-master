@@ -74,11 +74,8 @@ class mySlurmCluster(SlurmCluster):
 
 
 if __name__ == '__main__':
-
-
     argsparser = parser(strategy='random_search')
     hyperparams = argsparser.parse_args()
-
     # Enable cluster training.
     cluster = mySlurmCluster(
         hyperparam_optimizer=hyperparams,
@@ -103,23 +100,11 @@ if __name__ == '__main__':
     cluster.add_command('export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc') # 
     cluster.add_command('source $CONDADIR/miniconda3/etc/profile.d/conda.sh') # ...conda setup script
     cluster.add_command('conda activate $CONDADIR/miniconda/envs/open-ce') # ...and activate the conda environment
-    #cluster.add_command('') # ...and activate the environment
-    # Add custom SLURM commands which show up as:
-    # #comment
-    # #SBATCH --cmd=value
-    # ############
+
     cluster.add_slurm_cmd(
         cmd='account', value='bdlan05', comment='Project account for Bede')
     cluster.add_slurm_cmd(
         cmd='partition', value='gpu', comment='request gpu partition on Bede')
-
-    # Set job compute details (this will apply PER set of hyperparameters.)
-    #print(cluster.__dir__())
-    #del cluster.memory_mb_per_node
-    #This is commented because on bede, having gone into 
-    #nano /nobackup/projects/bdlan05/smander3/miniconda/envs/open-ce/lib/python3.9/site-packages/test_tube/hpc.py
-    #and removed memory per node and adjusted to not include cpu counts as this is done automatically in bede 
-    #del cluster.per_experiment_nb_cpus
     cluster.cpus_per_task=0
     cluster.per_experiment_nb_gpus = 1
     cluster.per_experiment_nb_nodes = 1
@@ -128,9 +113,7 @@ if __name__ == '__main__':
     # set a walltime of 24 hours,0, minues
     cluster.job_time = '24:00:00'
 
-    # 1 minute before walltime is up, SlurmCluster will launch a continuation job and kill this job.
-    # you must provide your own loading and saving function which the cluster object will call
     cluster.minutes_to_checkpoint_before_walltime = 1
-    #print(cluster.__dir__())
+  
     # run the models on the cluster
     cluster.optimize_parallel_cluster_gpu(train, nb_trials=10, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
