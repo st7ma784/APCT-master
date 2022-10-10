@@ -364,7 +364,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
         print(run.config.__dir__())
         config=run.config.__dict__
-        print("config",config)
+    print("config",config)
     logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=config, save_dir=dir)
     
     train(config,dir,devices,accelerator,Dataset,logtool)
@@ -408,8 +408,8 @@ def train(config={
             strategy="ddp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
-            #gradient_clip_val=0.25,
-            fast_dev_run=False,
+            gradient_clip_val=0.25,
+            fast_dev_run=True,
             precision=p
     )
     if config["batch_size"] !=1:
