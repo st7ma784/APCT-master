@@ -24,7 +24,7 @@ class parser(HyperOptArgumentParser):
 if __name__== "__main__":
     myparser=parser()
     hyperparams = myparser.parse_args()
-    print(hyperparams)
+    print(hyperparams.__dict__)
     for trial in hyperparams.trials(num=10):
         print(trial)
         

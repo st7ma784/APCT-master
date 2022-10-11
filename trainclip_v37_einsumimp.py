@@ -14,16 +14,8 @@ import clip
 from warnings import warn
 from mpl_toolkits import axes_grid1
 import matplotlib.pyplot as plt
+from CKA_test import ORIG_HSICA as orig_HSIC, add_colorbar 
 
-def add_colorbar(im, aspect=10, pad_fraction=0.5, **kwargs):
-    """Add a vertical color bar to an image plot."""
-    divider = axes_grid1.make_axes_locatable(im.axes)
-    width = axes_grid1.axes_size.AxesY(im.axes, aspect=1./aspect)
-    pad = axes_grid1.axes_size.Fraction(pad_fraction, width)
-    current_ax = plt.gca()
-    cax = divider.append_axes("right", size=width, pad=pad)
-    plt.sca(current_ax)
-    return im.axes.figure.colorbar(im, cax=cax, **kwargs)
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -136,13 +128,13 @@ class LightningCLIPModule(LightningModule):
         self.encode_image(batch[0]) #run through main mode
         ###If your model has supervised data, then perhaps do a loss with your date here!
         self.model2.encode_image(batch[0])# to compare supervision model
-        out=torch.stack([self._orig_HSIC(K, K) for K in self.model1_features.values()])
+        out=torch.stack([orig_HSIC(K, K) for K in self.model1_features.values()])
         self.hsic_matrix0=torch.add(self.hsic_matrix0,out) 
-        out=torch.stack([self._orig_HSIC(L, L) for L in self.model2_features.values()])
+        out=torch.stack([orig_HSIC(L, L) for L in self.model2_features.values()])
         self.hsic_matrix2=torch.add(self.hsic_matrix2,out)
-        out=torch.stack([self._orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()])
+        out=torch.stack([orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()])
         self.hsic_matrix1=torch.add(self.hsic_matrix1,out.reshape(self.N,self.M))
-        self.hsic_matrix = self.hsic_matrix1 / (self.hsic_matrix0.unsqueeze(1).sqrt()*self.hsic_matrix2.unsqueeze(0).sqrt())
+        self.hsic_matrix = self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0)))
         if not torch.isnan(self.hsic_matrix).any():
             warn("HSIC computation resulted in NANs")
             
@@ -259,7 +251,7 @@ class LightningCLIPModule(LightningModule):
             JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
             #print(JSEFactor)
 
-            caption_features1=torch.mul(caption_features1,.96)
+            caption_features1=torch.mul(caption_features1,JSEFactor)
             caption_features1=self.gelu(caption_features1)
             #del JSEFactor
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
@@ -414,16 +406,21 @@ def train(config={
     else:
         return 0 #No need to train if batch size is 1
 if __name__ == '__main__':
-    config={
-        "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
-        #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
-        # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
-        "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
-        "precision":'bf16',         #[32,16,'bf16']
-        "embed_dim": 512,
-        "transformer_width": 512,
-        "transformer_heads": 16,
-        "transformer_layers": 5,
-        "JSE":True,
-    }
+
+    from HOparser import parser
+    myparser=parser()
+    hyperparams = myparser.parse_args()
+    config=hyperparams.__dict__
+    # config={
+    #     "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
+    #     #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
+    #     # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
+    #     "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
+    #     "precision":'bf16',         #[32,16,'bf16']
+    #     "embed_dim": 512,
+    #     "transformer_width": 512,
+    #     "transformer_heads": 16,
+    #     "transformer_layers": 5,
+    #     "JSE":True,
+    # }
     train(config)
