@@ -66,7 +66,7 @@ class COCODataset(CocoCaptions):
 
 class COCODataModule(pl.LightningDataModule):
 
-    def __init__(self, Cache_dir='./', T=prep, batch_size=256):
+    def __init__(self, Cache_dir='.', T=prep, batch_size=256):
         super().__init__()
         self.data_dir = Cache_dir
         self.ann_dir=os.path.join(self.data_dir,"annotations")

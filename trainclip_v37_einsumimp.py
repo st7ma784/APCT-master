@@ -373,7 +373,7 @@ def train(config={
         "transformer_heads": 32,
         "transformer_layers": 4,
         "JSE":False,
-    },dir="/Data",devices="auto",accelerator="auto",Dataset=None,logtool=None):
+    },dir=".",devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                 JSE=config["JSE"],
                                     train_batch_size=config["batch_size"],
