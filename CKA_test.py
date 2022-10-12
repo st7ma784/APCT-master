@@ -20,13 +20,13 @@ def add_colorbar(im, aspect=10, pad_fraction=0.5, **kwargs):
 
 # A streamlined version of https://github.com/AntixK/PyTorch-Model-Compare}
 
-def ORRIG_HSIC(K, L):
+def ORRIG_HSIC(self, K, L):
         """
         Computes the unbiased estimate of HSIC metric.
         Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
         """
         N = K.shape[0]
-        ones = torch.ones(N, 1).to(device)
+        ones = torch.ones(N, 1).to(self.device)
         result = torch.add(torch.trace(K @ L), (((ones.t() @ K @ ones @ ones.t() @ L @ ones) / (N - 1) ) - ((ones.t() @ K @ L @ ones) * 2 ))/ (N - 2))
         return result
 def ORIG_HSICA(K, L):
