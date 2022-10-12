@@ -41,8 +41,7 @@ class LightningCLIPModule(LightningModule):
                 ):
 
         super().__init__()
-        self.JSE=JSE
-        self.gelu=nn.GELU()
+
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
 
@@ -63,7 +62,12 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
 
         self.vocab_size = vocab_size
         self.automatic_optimization=False
@@ -154,9 +158,9 @@ class LightningCLIPModule(LightningModule):
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
-        self.plot_results("HSIC{}.jpg".format(self.current_epoch))
+        self.plot_results("HSICBaseline{}.jpg".format(self.current_epoch))
         if self.logger is not None:
-            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
+            self.logger.log_image(key="HSICBaseline{}".format(self.current_epoch), images=["HSICBaseline{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
         del self.model2
@@ -222,124 +226,40 @@ class LightningCLIPModule(LightningModule):
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         # access your optimizers with use_pl_optimizer=False. Default is True,
         # setting use_pl_optimizer=True will maintain plugin/precision support
-        opt_a = self.optimizers()
 
-        labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.loss.ignore_index)
+        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
         logs=self.logit_scale.exp()
-        for i in range(3):
-            labels=torch.diag_embed(labels)
-        labels=labels+self.loss.ignore_index
         #self.labels=self.labels.to(self.device)
-        with torch.no_grad():
-            cache=self.encode_text(batch[1].flatten(start_dim=0,end_dim=1)).unflatten(0,(batch[1].shape[0],5),)
-            cache=cache/cache.norm(dim=-1, keepdim=True)
-            cache1=cache[:,0]
-            cache2=cache[:,1]#.to(torch.device("cpu"),non_blocking=True)
-            cache3=cache[:,2]#.to(torch.device("cpu"),non_blocking=True)
-            cache4=cache[:,3]#.to(torch.device("cpu"),non_blocking=True)
-            cache5=cache[:,4]#.to(torch.device("cpu"),non_blocking=True)
-            del cache
+        captions=batch[1]
+        cap1,cap2,cap3,cap4,cap5=captions[0],captions[1],captions[2],captions[3],captions[4]
         cacheim=self.encode_image(batch[0])
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
-            #print(JSEFactor)
-            cacheim=torch.mul(cacheim,JSEFactor)
-            cacheim=self.gelu(cacheim)
-        #     del JSEFactor
 
         cacheim = cacheim / cacheim.norm(dim=1, keepdim=True)
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)
-        self.manual_backward(loss,retain_graph=True)
-        cacheim=cacheim.detach()#.to(torch.device("cpu"),non_blocking=True)
-        self.log('imloss', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
-
-
-        del loss,batch[0]        
-
-        cap1,cap2,cap3,cap4,cap5=batch[0][:,0],batch[0][:,1],batch[0][:,2],batch[0][:,3],batch[0][:,4]
-        del batch
-
+   
+        lossim= self.loss(cacheim@ caption_features1.t(),labels)
         caption_features1=self.encode_text(cap1)
-        #print(caption_features1.requires_grad)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([caption_features1,cache2,cache3,cache4,cache5,cacheim]),2),dim=0))
-            #print(JSEFactor)
-
-            caption_features1=torch.mul(caption_features1,JSEFactor)
-            caption_features1=self.gelu(caption_features1)
-            #del JSEFactor
         caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,caption_features1,cache2)),labels)
-
-        self.manual_backward(loss,retain_graph=True)
-        self.log('caption1', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features1,loss,cap1
-
-
+        losscap= self.loss(caption_features1@ cacheim.t(),labels)
         caption_features2=self.encode_text(cap2)
-        #print(caption_features2.requires_grad)
-        if self.JSE:
-
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,caption_features2,cache3,cache4,cache5,cacheim]),2),dim=0))
-            # print(JSEFactor)
-
-            caption_features2=torch.mul(caption_features2,JSEFactor)
-            caption_features2=self.gelu(caption_features2)
-            del JSEFactor
+    
         caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True) 
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,caption_features2)),labels)        
-        self.manual_backward(loss,retain_graph=True)
-        self.log('caption2', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features2,loss,cap2
-
-
+        losscap2= self.loss(caption_features2@ cacheim.t(),labels)
         caption_features3=self.encode_text(cap3)
         # print(caption_features3.requires_grad)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,caption_features3,cache4,cache5,cacheim]),2),dim=0))
-            caption_features3=torch.mul(caption_features3,JSEFactor)
-            caption_features3=self.gelu(caption_features3)
-            del JSEFactor
         caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",caption_features3,cache4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
-        self.manual_backward(loss,retain_graph=True)
-        self.log('caption3', loss,  prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features3,loss,cap3 
-
-
+        losscap3= self.loss(caption_features3@ cacheim.t(),labels)
         caption_features4=self.encode_text(cap4)
-        if self.JSE:
-            JSEFactor=1-(4/torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,caption_features4,cache5,cacheim]),2),dim=0))
-            caption_features4=torch.mul(caption_features4,JSEFactor)
-            caption_features4=self.gelu(caption_features4)
-            del JSEFactor
-
         caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-        #print(caption_features4.requires_grad)
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,caption_features4,cache5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
-        self.manual_backward(loss,retain_graph=True)
-        self.log('caption4', loss,  prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features4,loss,cap4
 
-
+        losscap4= self.loss(caption_features4@ cacheim.t(),labels)
         caption_features5=self.encode_text(cap5)
-        if self.JSE:
-            JSEFactor=-torch.div(4,torch.sum(torch.pow(torch.stack([cache1,cache2,cache3,cache4,caption_features5,cacheim]),2),dim=0))
-            caption_features5=torch.mul(caption_features5,torch.add(JSEFactor,1))
-            caption_features5=self.gelu(caption_features5)
-            del JSEFactor
+
         caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-        #print(caption_features5.requires_grad)
-        loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
-        self.manual_backward(loss,retain_graph=True)
-        self.log('caption5', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features5,loss,cap5
+        losscap5= self.loss(caption_features5@ cacheim.t(),labels)
 
-
-        opt_a.step()
-        opt_a.zero_grad()
-        #        self.backward(0)
-            
+        self.log('train_loss', lossim+losscap+losscap2+losscap3+losscap4+losscap5, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return lossim+losscap+losscap2+losscap3+losscap4+losscap5
+  
     def configure_optimizers(self):
         
         optimizerA = torch.optim.Adam(
@@ -363,8 +283,8 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
         import wandb
         print("here")
-        run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        run=wandb.init(project="6DIMBaselineSweep",entity="st7ma784",name="6DIMBaselineSweep",config=config)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMBaselineSweep",entity="st7ma784",experiment=run, save_dir=dir)
         config=run.config.as_dict()
     print("config",config)
     
@@ -407,7 +327,7 @@ def train(config={
             max_epochs=40,
             #profiler="advanced",
             logger=logtool,
-            strategy="dp",
+            strategy="ddp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization
@@ -425,16 +345,5 @@ if __name__ == '__main__':
     myparser=parser()
     hyperparams = myparser.parse_args()
     config=hyperparams.__dict__
-    # config={
-    #     "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
-    #     #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
-    #     # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
-    #     "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
-    #     "precision":'bf16',         #[32,16,'bf16']
-    #     "embed_dim": 512,
-    #     "transformer_width": 512,
-    #     "transformer_heads": 16,
-    #     "transformer_layers": 5,
-    #     "JSE":True,
-    # }
+ 
     train(config)
