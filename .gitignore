@@ -133,8 +133,12 @@ lightning_logs
 lightning_logs/**
 NDIMContrSweep/
 6DIMContrSweep/
-checkpoints/epoch=11-step=201060.ckpt
-
-checkpoints/epoch=39-step=670200.ckpt
-checkpoints/epoch=24-step=418875.ckpt
-checkpoints/epoch=3-step=67020.ckpt
+checkpoints/*.ckpt
+*.zip
+train2014/*
+val2014/*
+test2015/*
+train2017/*
+val2017/*
+annotations/*
+models--gpt2/*

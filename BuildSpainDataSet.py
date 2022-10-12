@@ -28,9 +28,12 @@ class COCODataset(CocoCaptions):
                 for file in files:
                     Path(os.path.join(root, file)).touch()
         Path(annFile).touch()
-        assert os.path.exists(root),'root does not exist'
+
+        if not os.path.exists(root):
+            print("root does not exist {}".format(root))
         #print('Error: root directory does not exist: {}'.format(root))
-        assert os.path.exists(annFile),'annFile does not exist' 
+        if not os.path.exists(annFile):
+            print('annFile does not exist {}'.format(annFile)) 
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         #print('Done')
@@ -63,7 +66,7 @@ class COCODataset(CocoCaptions):
 
 class COCODataModule(pl.LightningDataModule):
 
-    def __init__(self, Cache_dir='./', T=prep, batch_size=256):
+    def __init__(self, Cache_dir='.', T=prep, batch_size=256):
         super().__init__()
         self.data_dir = Cache_dir
         self.ann_dir=os.path.join(self.data_dir,"annotations")
@@ -121,7 +124,7 @@ class COCODataModule(pl.LightningDataModule):
             #print("Location", location) #/Data/train2014.zip
             #time.sleep(5)
             #print('Downloading',url)
-            obj=SmartDL(url,os.path.join(location,name),progress_bar=False,)
+            obj=SmartDL(url,os.path.join(location,name),progress_bar=False, verify=False)
             obj.FileName=name
             if name.endswith(".zip"):
                 name=name[:-4]
@@ -134,7 +137,7 @@ class COCODataModule(pl.LightningDataModule):
             if not os.path.exists(os.path.join(location,name+".zip")):
                 print(os.path.join(location,name))
                 objs.append(obj)
-                obj.start(blocking=False)
+                obj.start(blocking=False,  )#There are security problems with Hostename 'images.cocodataset.org' and Certificate 'images.cocodataset.org' so we need to disable the SSL verification
         for obj in objs:
             while not obj.isFinished():
                 time.sleep(5)
@@ -163,9 +166,13 @@ class COCODataModule(pl.LightningDataModule):
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
                 dir=os.path.join(self.data_dir,version)
-
+                if not os.path.exists(annfile):
+                    print("Missing annotation file",annfile)
+                
+                print("Loading train dataset",annfile)
                 #time.sleep(2)
                 dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
+                
                 #print("dset:",dset.__dir__())
 
                 if len(dset)>0:

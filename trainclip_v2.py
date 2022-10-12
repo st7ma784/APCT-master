@@ -66,7 +66,7 @@ class LightningCLIPModule(LightningModule):
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.initialize_parameters()
-       
+        print("done")
 
 
     def build_attention_mask(self):
@@ -167,7 +167,7 @@ class LightningCLIPModule(LightningModule):
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False)
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         return {"loss": loss}
 
             
@@ -178,31 +178,45 @@ class LightningCLIPModule(LightningModule):
       
         return [optimizer]
 import wandb
-def testtrainfunc(*args):
+def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     import time
     import os
     import socket
+
     from datetime import datetime as dt
-    if __name__ == '__main__':
-        print('Process started {}'.format(dt.now()))
-        print('NODE : {}'.format(socket.gethostname()))
-        print('PID  : {}'.format(os.getpid()))
-        print('Executing for 15 secs')
-        time.sleep(15)
-        print('Process finished {}\n'.format(dt.now()))
-        import torch
-        print("CUDA? {}".format(torch.cuda.is_available()))
-        
-        print([torch.cuda.get_device_name(d) for d in range(torch.cuda.device_count())])
-        
-def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+    
+    print('Process started {}'.format(dt.now()))
+    print('NODE : {}'.format(socket.gethostname()))
+    print('PID  : {}'.format(os.getpid()))
+    print('Executing for 15 secs')
+    time.sleep(15)
+    print('Process ended {}'.format(dt.now()))
+    print(config) 
+    print(dir)
+    print(devices)
+    print(accelerator)
+    print(Dataset)
+    print('Process finished {}\n'.format(dt.now()))
+    import torch
+    print("CUDA? {}".format(torch.cuda.is_available()))
+    
+    print([torch.cuda.get_device_name(d) for d in range(torch.cuda.device_count())])
+    with wandb.init(project="BEDETEST",entity="st7ma784",name="BEDETEST",config=config) as run:
+        run.log({"test":1})  # only log first rank
+def wandbtrain(config=None,dir=None,devices="auto",accelerator="auto",Dataset=None):
+    if config is not None and not isinstance(config,dict):
+        #print("Config is not a dict")
+        config=config.__dict__
+        #print("as dict: {}".format(config))
     with wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config) as run:
 
-        logtool= pytorch_lightning.loggers.WandbLogger( name="6DIMContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( name="BEDEContrSweep",project="6DIMContrSweep",entity="st7ma784",experiment=run, save_dir=dir)
         #print(logtool.__dir__())
-        config=logtool.experiment.config
-        print("WANDB CONFIG",config)
-        train(config,dir,devices,accelerator,Dataset,logtool)
+        #config=logtool.experiment.config
+        #print("experiment {}".format(logtool.experiment.config))
+        print("WANDB run.CONFIG {}".format(run.config))
+        dir=run.config.get("dir",dir)
+        train(run.config,dir,devices,accelerator,Dataset,logtool)
 def train(config={
         "batch_size":16,
         "learning_rate":2e-4,
@@ -211,11 +225,15 @@ def train(config={
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                     train_batch_size=config["batch_size"],
                                     adam_epsilon = 1e-8)
+    print("Model created")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
-
+        #print(dir)
+        #print(config)
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     Dataset.batch_size=config["batch_size"]
+    print("precision {}".format(config["precision"]))
+
     trainer=pytorch_lightning.Trainer(
             devices=devices,
             accelerator=accelerator,
@@ -223,12 +241,13 @@ def train(config={
             #profiler="advanced",
             logger=logtool,
             strategy="ddp",
+            num_nodes=1,
             #callbacks=callbacks,
             gradient_clip_val=0.25,
-            precision=config["precision"]
+            precision=config.get("precision",'bf16')
     )
     if config["batch_size"] !=1:
-        
+        print("precision {}".format(config["precision"]))
         trainer.fit(model,Dataset)
     else:
         return 0 #No need to train if batch size is 1
