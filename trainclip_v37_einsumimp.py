@@ -137,6 +137,9 @@ class LightningCLIPModule(LightningModule):
         self.encode_image(batch[0]) #run through main mode
         ###If your model has supervised data, then perhaps do a loss with your date here!
         self.model2.encode_image(batch[0])# to compare supervision model
+        self.encode_text(batch[1][:,0]) #run through main mode
+        ###If your model has supervised data, then perhaps do a loss with your date here!
+        self.model2.encode_text(batch[1][:,0])# to compare supervision model
         N = len(self.model1_features.values())
         M = len(self.model2_features.values())
         print("N",N)
