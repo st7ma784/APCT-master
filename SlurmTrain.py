@@ -82,7 +82,7 @@ if __name__ == '__main__':
         hyperparam_optimizer=hyperparams,
         log_path="/nobackup/projects/bdlan05/smander3/logs/",#hyperparams.log_path,
         python_cmd='python3',
-        test_tube_exp_name="BASELINE CLIP",
+        #test_tube_exp_name="BASELINE CLIP",
     )
     cluster.__build_slurm_command = __build_slurm_command
     # Email results if your hpc supports it.
