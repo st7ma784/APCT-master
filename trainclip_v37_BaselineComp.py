@@ -144,6 +144,8 @@ class LightningCLIPModule(LightningModule):
         self.encode_image(batch[0]) #run through main mode
         ###If your model has supervised data, then perhaps do a loss with your date here!
         self.model2.encode_image(batch[0])# to compare supervision model
+        self.encode_text(batch[1].flatten(start_dim=0,end_dim=1))
+        Self.model2.encode_text(batch[1].flatten(start_dim=0,end_dim=1))
         N = len(self.model1_features.values())
         M = len(self.model2_features.values())
         print("N",N)
@@ -172,8 +174,13 @@ class LightningCLIPModule(LightningModule):
         with torch.no_grad():
             if isinstance(out, tuple):
                 out = out[0]
-            #if activation shape is the same as dataloader batch size, then it is a linear layer
-            if out.shape[0] == self.hparams.train_batch_size:
+
+            if out.shape[1]== self.hparams.train_batch_size or out.shape[1] ==self.hparams.train_batch_size*5:
+                #permute
+                pass
+
+            if out.shape[0] == self.hparams.train_batch_size or out.shape[0] ==self.hparams.train_batch_size*5:
+                #permute
                 print("LOGGING : ", model, name, out.shape)
                 if model == "model1":
                     X = out.flatten(1)
@@ -186,10 +193,18 @@ class LightningCLIPModule(LightningModule):
 
     def _insert_hooks(self):
        
-        for name, layer in self.named_modules():
+        for name, layer in self.encoder.named_modules():
             self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
       
-        for name, layer in self.model2.named_modules():
+      
+        for name, layer in self.encode_images.named_modules():
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+      
+      
+        for name, layer in self.model2.transformer.named_modules():
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+      
+        for name, layer in self.model2.visual.named_modules():
             self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
        
   
