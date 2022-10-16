@@ -117,8 +117,7 @@ class LightningCLIPModule(LightningModule):
         Computes the unbiased estimate of HSIC metric.
         Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
         """
-        N=K.shape[0]
-        return torch.add(torch.trace(K@L),torch.div(torch.sum(K)*torch.sum(L)/(N - 1) - (torch.sum(K@L) * 2 ), (N - 2)))
+        return torch.add(torch.trace(K@L),torch.div(torch.sum(K)*torch.sum(L)/(K.shape[0] - 1) - (torch.sum(K@L) * 2 ), (K.shape[0] - 2)))
         
     def on_validation_epoch_start(self):
         self.eval()
@@ -137,23 +136,18 @@ class LightningCLIPModule(LightningModule):
         self.encode_image(batch[0]) #run through main mode
         ###If your model has supervised data, then perhaps do a loss with your date here!
         self.model2.encode_image(batch[0])# to compare supervision model
-        self.encode_text(batch[1][:,0]) #run through main mode
-        ###If your model has supervised data, then perhaps do a loss with your date here!
-        self.model2.encode_text(batch[1][:,0])# to compare supervision model
-        N = len(self.model1_features.values())
-        M = len(self.model2_features.values())
-        print("N",N)
-        print("M",M)
-        out=torch.stack([self.orig_HSIC(K, K) for K in self.model1_features.values()])
-        self.hsic_matrix0=torch.add(self.hsic_matrix0,out) if hasattr(self, 'hsic_matrix0') else out
-        out=torch.stack([self.orig_HSIC(L, L) for L in self.model2_features.values()])
-        self.hsic_matrix2=torch.add(self.hsic_matrix2,out) if hasattr(self, 'hsic_matrix2') else out
-        out=torch.stack([self.orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()])
-        self.hsic_matrix1=torch.add(self.hsic_matrix1,out.reshape(N,M)) if hasattr(self, 'hsic_matrix1') else out.reshape(N,M)
-        self.hsic_matrix = self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0)))
-        if not torch.isnan(self.hsic_matrix).any():
-            warn("HSIC computation resulted in NANs")
-            
+        # self.encode_text(batch[1][:,0])
+        # ###If your model has supervised data, then perhaps do a loss with your date here!
+        # self.model2.encode_text(batch[1][:,0])
+        N = len(self.model1_features.items())
+        M = len(self.model2_features.items())
+        a=torch.stack([self.orig_HSIC(K, K) for K in self.model1_features.values()])
+        self.hsic_matrix0=torch.add(self.hsic_matrix0,a) if hasattr(self, 'hsic_matrix0') else a
+        b=torch.stack([self.orig_HSIC(L, L) for L in self.model2_features.values()])
+        self.hsic_matrix2=torch.add(self.hsic_matrix2,b) if hasattr(self, 'hsic_matrix2') else b
+        c=torch.stack([self.orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()]).reshape(N,M)
+        self.hsic_matrix1=torch.add(self.hsic_matrix1,c) if hasattr(self, 'hsic_matrix1') else c
+
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
@@ -165,12 +159,15 @@ class LightningCLIPModule(LightningModule):
         del self.model2
 
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
-        with torch.no_grad():
-            if isinstance(out, tuple):
-                out = out[0]
-            #if activation shape is the same as dataloader batch size, then it is a linear layer
-            if out.shape[0] == self.hparams.train_batch_size:
-                print("LOGGING : ", model, name, out.shape)
+        if isinstance(out, tuple):
+            out = out[0]
+        if len(out.shape)>=2 and len(name)>2:
+            #if activation shape is the same as dataloader batch size, then it is a linear 
+            if out.shape[1] == self.hparams.train_batch_size or out.shape[1] == self.hparams.train_batch_size*5:
+                out=out.permute(1,0,*torch.arange(len(out.shape)-2)+2)
+            if out.shape[0] == self.hparams.train_batch_size or out.shape[0] == self.hparams.train_batch_size*5:
+                #print("LOGGING : ", model, name, out.shape)
+            
                 if model == "model1":
                     X = out.flatten(1)
                     self.model1_features[name] = (X @ X.t()).fill_diagonal_(0)
@@ -182,12 +179,16 @@ class LightningCLIPModule(LightningModule):
 
     def _insert_hooks(self):
        
-        for name, layer in self.named_modules():
+        for name, layer in self.encode_image.named_modules():
             self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-      
-        for name, layer in self.model2.named_modules():
+        for name, layer in self.encoder.named_modules():
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
+        for name, layer in self.model2.transformer.named_modules():
+            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
+        for name, layer in self.model2.visual.named_modules():
             self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
        
+
   
     def export(self):
         """
@@ -197,7 +198,7 @@ class LightningCLIPModule(LightningModule):
         return {
             "model1_name": "Trained",
             "model2_name": "PretrainedModel",
-            "CKA": self.hsic_matrix,
+            "CKA":self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0))),
             "model1_layers": self.named_modules(),
             "model2_layers": self.model2.named_modules(),
         }
@@ -206,7 +207,11 @@ class LightningCLIPModule(LightningModule):
                      save_path: str = None,
                      title: str = None):
         fig, ax = plt.subplots()
-        im = ax.imshow(self.hsic_matrix.cpu(), origin='lower', cmap='magma')
+        hsic_matrix = self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0)))
+        if not torch.isnan(hsic_matrix).any():
+            warn("HSIC computation resulted in NANs")
+            
+        im = ax.imshow(hsic_matrix.cpu(), origin='lower', cmap='magma')
         ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)
         ax.set_ylabel(f"Layers {self.model1_info['Name']}", fontsize=15)
 
@@ -336,7 +341,7 @@ class LightningCLIPModule(LightningModule):
         loss = self.loss(logs*torch.einsum("abcz,defz->abcdef",torch.einsum("az,bz,cz->abcz",cache3,cache4,caption_features5),torch.einsum("az,bz,cz->abcz",cacheim,cache1,cache2)),labels)        
         self.manual_backward(loss,retain_graph=True)
         self.log('caption5', loss, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features5,loss,cap5
+        #del caption_features5,loss,cap5
 
 
         opt_a.step()
@@ -414,7 +419,7 @@ def train(config={
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization
-            fast_dev_run=False,
+            #fast_dev_run=True,
             precision=p
     )
     if config["batch_size"] !=1:
