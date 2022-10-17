@@ -24,10 +24,13 @@ class COCODataset(CocoCaptions):
         #print('Loading COCO dataset')
         self.tokenizer=tokenizer
         #check if root and annfile exist
-        for root, dirs, files in os.walk(root):
+        if os.getenv('ISHEC',False):
+            
+            for root, dirs, files in os.walk(root):
                 for file in files:
                     Path(os.path.join(root, file)).touch()
-        Path(annFile).touch()
+        
+            Path(annFile).touch()
 
         if not os.path.exists(root):
             print("root does not exist {}".format(root))

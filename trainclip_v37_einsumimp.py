@@ -159,8 +159,10 @@ class LightningCLIPModule(LightningModule):
         del self.model2
 
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
+        old=out
         if isinstance(out, tuple):
             out = out[0]
+            
         if len(out.shape)>=2 and len(name)>2:
             #if activation shape is the same as dataloader batch size, then it is a linear 
             if out.shape[1] == self.hparams.train_batch_size or out.shape[1] == self.hparams.train_batch_size*5:
@@ -176,7 +178,7 @@ class LightningCLIPModule(LightningModule):
                     self.model2_features[name] = (X @ X.t()).fill_diagonal_(0)
                 else:
                     raise RuntimeError("Unknown model name for _log_layer.")
-
+        out=old
     def _insert_hooks(self):
        
         for name, layer in self.encode_image.named_modules():
@@ -387,7 +389,7 @@ def train(config={
         "transformer_heads": 32,
         "transformer_layers": 4,
         "JSE":False,
-    },dir=".",devices="auto",accelerator="auto",Dataset=None,logtool=None):
+    },dir=None,devices="auto",accelerator="auto",Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                 JSE=config["JSE"],
                                     train_batch_size=config["batch_size"],
@@ -395,6 +397,8 @@ def train(config={
                                     transformer_width= config["transformer_width"],
                                     transformer_heads= config["transformer_heads"],
                                     transformer_layers= config["transformer_layers"])
+    if dir is None:
+        dir=config.get("dir",".")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
 
