@@ -165,20 +165,19 @@ class LightningCLIPModule(LightningModule):
     #     # output= torch.add(torch.sum(K*L.t()),torch.div((torch.sum(K)*torch.sum(L)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(L,dim=1))*2),(K.shape[0] - 2)))
 
     
-    def old_on_validation_epoch_start(self):
+    def on_validation_epoch_start(self):
         self.eval()
-        self.freeze()
     #     #import clip model here]
         self.naninfcount=0
-        self.model2,_ = clip.load("ViT-B/32", device=self.device)
+        self.model2,_ = clip.load("ViT-B/32", device=self.device).eval()
         a,b=self._insert_hooks()
         self.eval()
-        self.model2.eval()
+        
         
         #self.hsic_matrix1=torch.zeros((b,a),device=self.device)
         #self.hsic_matrix2=torch.zeros(a, device=self.device)
 
-    def old_validation_step(self,batch,*args):
+    def validation_step(self,batch,*args):
 
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
@@ -203,7 +202,7 @@ class LightningCLIPModule(LightningModule):
             self.hsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
         #print(self.hsic_matrix1.shape)
-    def old_on_validation_epoch_end(self,):
+    def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
         self.plot_results("HSIC{}.jpg".format(self.current_epoch))
