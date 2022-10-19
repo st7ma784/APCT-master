@@ -503,6 +503,9 @@ if __name__ == '__main__':
     from HOparser import parser
     myparser=parser()
     hyperparams = myparser.parse_args()
+    trial=hyperparams.generate_trials(1)[0]
+    print(trial)
+    wandbtrain(trial)
     #config=hyperparams.__dict__
     # config={
     #     "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
@@ -516,5 +519,4 @@ if __name__ == '__main__':
     #     "transformer_layers": 5,
     #     "JSE":True,
     # }
-    wandbtrain(hyperparams)
     #train(hyperparams.__dict__)
