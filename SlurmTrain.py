@@ -1,7 +1,7 @@
 from test_tube import SlurmCluster
 from test_tube import HyperOptArgumentParser
 #from trainclip_v2 import train as train_clip
-import os
+import os,sys
 from HOparser import parser
     #overwrte the run function to remove srun
 def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, on_gpu):
@@ -100,7 +100,8 @@ if __name__ == '__main__':
         python_cmd='python3',
         #test_tube_exp_name="BASELINE CLIP",
     )
-    #cluster.__build_slurm_command = __build_slurm_command
+    #
+    cluster.__build_slurm_command = __build_slurm_command
     # Email results if your hpc supports it.
     cluster.notify_job_status(
         email='st7ma784@gmail.com', on_done=True, on_fail=True)
@@ -126,6 +127,8 @@ if __name__ == '__main__':
     cluster.job_time = '24:00:00'
 
     cluster.minutes_to_checkpoint_before_walltime = 1
-  
+    path= os.path.realpath(sys.argv[0]).split('/')[:-1]+['trainclip_v37_einsumimp.py']
+
+    cluster.script_name='/'.join(path)
     # run the models on the cluster
     cluster.optimize_parallel_cluster_gpu(train, nb_trials=1, job_name='fourth_wandb_trial_batch') # Change this to optimize_parralel_cluster_cpu to debug.
