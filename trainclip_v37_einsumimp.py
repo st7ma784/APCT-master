@@ -512,4 +512,4 @@ if __name__ == '__main__':
     #     "transformer_layers": 5,
     #     "JSE":True,
     # }
-    train(config)
+    wandbtrain(config)
