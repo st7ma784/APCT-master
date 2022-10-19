@@ -8,6 +8,7 @@ wandb/
 # C extensions
 *.so
 MSCOCOES/
+*.jpg
 # Distribution / packaging
 .Python
 build/
