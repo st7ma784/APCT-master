@@ -272,9 +272,9 @@ class LightningCLIPModule(LightningModule):
                      save_path: str = None,
                      title: str = None):
         fig, ax = plt.subplots()
-        print(self.hsic_matrix1.shape) #102,30
-        print(self.hsic_matrix0.shape)#30
-        print(self.hsic_matrix2.shape)#102
+        #print(self.hsic_matrix1.shape) #102,30
+        #print(self.hsic_matrix0.shape)#30
+        #print(self.hsic_matrix2.shape)#102
         t=self.hsic_matrix0.unsqueeze(1)*self.hsic_matrix2.unsqueeze(0)
         print(torch.sum(torch.abs(t)==t))
         hsic_matrix = self.hsic_matrix1 / torch.sqrt(torch.abs(t))
