@@ -64,7 +64,7 @@ def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, 
                                                 slurm_cmd_script_path,
                                                 HyperOptArgumentParser.SLURM_EXP_CMD,
                                                 exp_i)
-    sub_commands.append('{} {} {}'.format(self.python_cmd, self.script_name, trial_args))
+    sub_commands.append('srun {} {} {}'.format(self.python_cmd, self.script_name, trial_args))
     # build full command with empty lines in between
     full_command = '\n'.join(sub_commands)
     print("RUNNING ")
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         cmd='account', value='bdlan05', comment='Project account for Bede')
     cluster.add_slurm_cmd(
         cmd='partition', value='gpu', comment='request gpu partition on Bede')
-    cluster.per_experiment_nb_cpus=1
+    cluster.per_experiment_nb_cpus=0
     cluster.per_experiment_nb_gpus = 1
     cluster.per_experiment_nb_nodes = 1
     #cluster.gpu_type = '1080ti'
