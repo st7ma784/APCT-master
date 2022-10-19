@@ -428,14 +428,10 @@ class LightningCLIPModule(LightningModule):
  
 def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     if config is not None:
-        #config=config.__dict__
         config=config.__dict__
         dir=config.get("dir",dir)
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784", save_dir=dir)
-        # print(logtool.experiment)
-        # logtool.experiment.config={}
-        # logtool.experiment.config.update(config)
-        # logtool.log_hyperparams(config)
+        print(config)
 
     else: 
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
@@ -444,7 +440,6 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         run=wandb.init(project="6DIMCLIPTOKSweep",entity="st7ma784",name="6DIMCLIPTOKSweep",config=config)
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784",experiment=run, save_dir=dir)
         config=run.config.as_dict()
-    print("config",config)
     
     train(config,dir,devices,accelerator,Dataset,logtool)
 
