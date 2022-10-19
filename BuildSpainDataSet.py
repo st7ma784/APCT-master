@@ -9,27 +9,24 @@ from torch.utils.data import ConcatDataset
 from torchvision.datasets import CocoCaptions
 from torchvision.transforms import Compose, Resize, CenterCrop, ToTensor, Normalize
 prep=Compose([
-        Resize(224, interpolation=Image.BICUBIC),
+        Resize(224, interpolation=Image.NEAREST),
         CenterCrop(224),
         #Note: the standard  lambda function here is not supported by pytorch lightning
         ToTensor(),
         Normalize((0.48145466, 0.4578275, 0.40821073), (0.26862954, 0.26130258, 0.27577711)),
         ])
 T= transforms.Compose([transforms.Resize((224,224),interpolation=Image.NEAREST),transforms.ToTensor()])
-from transformers import AutoTokenizer,GPT2Tokenizer
+from transformers import AutoTokenizer,GPT2Tokenizer, CLIPTokenizer
 import time
 from pathlib import Path
 class COCODataset(CocoCaptions):
     def __init__(self, root, annFile, tokenizer, *args, **kwargs):
         #print('Loading COCO dataset')
         self.tokenizer=tokenizer
-        #check if root and annfile exist
         if os.getenv('ISHEC',False):
-            
             for root, dirs, files in os.walk(root):
                 for file in files:
                     Path(os.path.join(root, file)).touch()
-        
             Path(annFile).touch()
 
         if not os.path.exists(root):
@@ -76,16 +73,17 @@ class COCODataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.T=T
         self.splits={"train":[],"val":[],"test":[]}
-        try: 
-            self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
-        except ValueError as e:
-            from transformers import GPT2Tokenizer
-            tok = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=self.data_dir)
-            tok.save_pretrained(self.data_dir)
-        finally:
-            self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
-        self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
-        self.tokenizer.pad_token = self.tokenizer.eos_token 
+        self.tokenizer=CLIPTokenizer.from_pretrained("openai/clip-vit-base-patch32",cache_dir=self.data_dir)
+        # try: 
+        #     self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
+        # except ValueError as e:
+        #     from transformers import GPT2Tokenizer
+        #     tok = GPT2Tokenizer.from_pretrained("gpt2", cache_dir=self.data_dir)
+        #     tok.save_pretrained(self.data_dir)
+        # finally:
+        #     self.tokenizer=AutoTokenizer.from_pretrained("gpt2",cache_dir=self.data_dir)
+        #self.tokenizer.vocab["</s>"] = self.tokenizer.vocab_size -1
+        #self.tokenizer.pad_token = self.tokenizer.eos_token 
         self.prepare_data()
     def train_dataloader(self, B=None):
         if B is None:

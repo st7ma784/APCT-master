@@ -101,7 +101,7 @@ if __name__ == '__main__':
     cluster.add_command('export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc') # 
     cluster.add_command('source $CONDADIR/miniconda3/etc/profile.d/conda.sh') # ...conda setup script
     cluster.add_command('conda activate $CONDADIR/miniconda/envs/open-ce') # ...and activate the conda environment
-
+    cluster.add_slurm_cmd(cmd='reservation', value='mcd6_38',comment='reservation for the cluster only ue with blessing of mark Dixon')
     cluster.add_slurm_cmd(
         cmd='account', value='bdlan05', comment='Project account for Bede')
     cluster.add_slurm_cmd(
