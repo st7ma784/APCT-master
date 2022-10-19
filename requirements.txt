@@ -5,3 +5,5 @@ pySmartDL
 transformers
 Pillow==8.4.0
 matplotlib
+torch_cka
+test_tube
