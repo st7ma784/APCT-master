@@ -64,7 +64,7 @@ def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, 
                                                 slurm_cmd_script_path,
                                                 HyperOptArgumentParser.SLURM_EXP_CMD,
                                                 exp_i)
-    sub_commands.append('srun {} {} {}'.format(self.python_cmd, self.script_name, trial_args))
+    sub_commands.append('{} {} {}'.format(self.python_cmd, self.script_name, trial_args))
     # build full command with empty lines in between
     full_command = '\n'.join(sub_commands)
     print("RUNNING ")
