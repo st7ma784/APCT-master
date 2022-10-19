@@ -1,13 +1,16 @@
 
+from re import A
 import pytorch_lightning
 from pytorch_lightning import LightningModule
+from sympy import O
 import torch.nn as nn
 import torch
 import os
 from functools import partial
+from itertools import product
 import numpy as np
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisionTransformer
+from clip.model import Transformer,LayerNorm,VisionTransformer,QuickGELU
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 import clip
@@ -42,7 +45,8 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.JSE=JSE
-        self.gelu=nn.GELU()
+        if self.JSE:
+            self.gelu=QuickGELU()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
 
@@ -76,6 +80,7 @@ class LightningCLIPModule(LightningModule):
         self.handles=[]
         self.model1_info={'Name':"SelfCLIP",}
         self.model2_info={'Name': "Stock CLIP",}
+        self.naninfcount=0
         print("ici")
 
     def build_attention_mask(self):
@@ -100,6 +105,15 @@ class LightningCLIPModule(LightningModule):
             nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
             nn.init.normal_(block.mlp.c_fc.weight, std=fc_std)
             nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
+        for block in self.encode_image.named_modules():
+            if isinstance(block[1],nn.Linear):
+                nn.init.normal_(block[1].weight, std=proj_std)
+            elif isinstance(block[1],nn.LayerNorm):
+                nn.init.normal_(block[1].weight, std=proj_std)
+            elif isinstance(block[1],nn.Conv2d):
+                nn.init.normal_(block[1].weight, std=proj_std)
+            elif isinstance(block[1],nn.BatchNorm2d):
+                nn.init.normal_(block[1].weight, std=proj_std)
 
         nn.init.normal_(self.text_projection, std=self.encoder.width ** -0.5)
     def encode_text(self, text):
@@ -117,37 +131,78 @@ class LightningCLIPModule(LightningModule):
         Computes the unbiased estimate of HSIC metric.
         Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
         """
-        return torch.add(torch.trace(K@L),torch.div(torch.sum(K)*torch.sum(L)/(K.shape[0] - 1) - (torch.sum(K@L) * 2 ), (K.shape[0] - 2)))
+        return torch.add(torch.sum(K*L.t()),torch.div((torch.sum(K)*torch.sum(L)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(L,dim=1))*2),(K.shape[0] - 2)))
+            
+    def orig_HSIC2(self, K):
+        return self.orig_HSIC(K,K)
         
+    
+    def batch_HSIC2(self,K):
+        a=torch.sum(K,dim=-1)
+        b=torch.sum(K,dim=-2)
+        c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[1] - 1),torch.sum(a*b,dim=1),alpha=2)
+        output=torch.add(torch.einsum('a...->a',torch.pow(K,2)),torch.div(c,(K.shape[1] - 2)))
+        return output
+        
+    def batch_HSIC1(self,K,L):
+        a=torch.sum(L,dim=-1)
+        b=torch.sum(K,dim=-2)
+        c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1))/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
+        return torch.add(torch.einsum('a...->a',K*L),torch.div(c,(K.shape[1] - 2)))
+        
+        
+    def batch_HSIC3(self,K,L):
+        a=torch.sum(L,dim=-1)
+        b=torch.sum(K,dim=-2)
+        c=torch.sub(torch.sum(b,dim=-1)*torch.sum(a,dim=-1)/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
+        return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
+         
+     # def combineHSIC(self,HSICA,HSICB):
+    #     #HSICA= torch.add(torch.sum(K*K.t()),torch.div((torch.sum(K)*torch.sum(K)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(K,dim=1))*2),(K.shape[0] - 2)))
+    #     #HSICB= torch.add(torch.sum(L*L.t()),torch.div((torch.sum(L)*torch.sum(L)/(L.shape[0] - 1)) - (torch.sum(torch.sum(L,dim=0)*torch.sum(L,dim=1))*2),(L.shape[0] - 2)))
+    #     K= 
+    #     L=
+    #     # output= torch.add(torch.sum(K*L.t()),torch.div((torch.sum(K)*torch.sum(L)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(L,dim=1))*2),(K.shape[0] - 2)))
+
+    
     def on_validation_epoch_start(self):
         self.eval()
         self.freeze()
     #     #import clip model here]
+        self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
-        self._insert_hooks()
+        a,b=self._insert_hooks()
         self.eval()
         self.model2.eval()
-
+        
+        #self.hsic_matrix1=torch.zeros((b,a),device=self.device)
+        #self.hsic_matrix2=torch.zeros(a, device=self.device)
 
     def validation_step(self,batch,*args):
 
         self.model1_features = {}  #reset list of forward hooks
-        self.model2_features = {}  
+        self.model2_features = {}  #reset list of forward hooks
         self.encode_image(batch[0]) #run through main mode
-        ###If your model has supervised data, then perhaps do a loss with your date here!
-        self.model2.encode_image(batch[0])# to compare supervision model
-        # self.encode_text(batch[1][:,0])
-        # ###If your model has supervised data, then perhaps do a loss with your date here!
-        # self.model2.encode_text(batch[1][:,0])
-        N = len(self.model1_features.items())
-        M = len(self.model2_features.items())
-        a=torch.stack([self.orig_HSIC(K, K) for K in self.model1_features.values()])
-        self.hsic_matrix0=torch.add(self.hsic_matrix0,a) if hasattr(self, 'hsic_matrix0') else a
-        b=torch.stack([self.orig_HSIC(L, L) for L in self.model2_features.values()])
-        self.hsic_matrix2=torch.add(self.hsic_matrix2,b) if hasattr(self, 'hsic_matrix2') else b
-        c=torch.stack([self.orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()]).reshape(N,M)
-        self.hsic_matrix1=torch.add(self.hsic_matrix1,c) if hasattr(self, 'hsic_matrix1') else c
+        self.encode_text(batch[1][:,0])
 
+        self.model2.encode_image(batch[0])# to compare supervision model
+        self.model2.encode_text(batch[1][:,0])
+        a=torch.stack(list(self.model1_features.values()))
+        if not hasattr(self,'hsic_matrix0'):
+            self.hsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        self.hsic_matrix0=torch.add(self.hsic_matrix0,self.batch_HSIC2(a)) 
+        
+        #print(self.hsic_matrix0.shape)
+        a=torch.stack(list(self.model2_features.values()))
+        if not hasattr(self,'hsic_matrix2'):
+            self.hsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        self.hsic_matrix2=torch.add(self.hsic_matrix2,self.batch_HSIC2(a))
+        #print(self.hsic_matrix2.shape)
+        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
+        if not hasattr(self,'hsic_matrix1'):
+            self.hsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
+        #print(self.hsic_matrix1.shape)
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
@@ -156,41 +211,52 @@ class LightningCLIPModule(LightningModule):
             self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
+        print(self.naninfcount)
         del self.model2
+        del self.hsic_matrix0
+        del self.hsic_matrix1
+        del self.hsic_matrix2
+        
 
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
-        old=out
         if isinstance(out, tuple):
-            out = out[0]
-            
-        if len(out.shape)>=2 and len(name)>2:
-            #if activation shape is the same as dataloader batch size, then it is a linear 
-            if out.shape[1] == self.hparams.train_batch_size or out.shape[1] == self.hparams.train_batch_size*5:
-                out=out.permute(1,0,*torch.arange(len(out.shape)-2)+2)
-            if out.shape[0] == self.hparams.train_batch_size or out.shape[0] == self.hparams.train_batch_size*5:
-                #print("LOGGING : ", model, name, out.shape)
-            
-                if model == "model1":
-                    X = out.flatten(1)
-                    self.model1_features[name] = (X @ X.t()).fill_diagonal_(0)
-                elif model == "model2":
-                    X = out.flatten(1)
-                    self.model2_features[name] = (X @ X.t()).fill_diagonal_(0)
-                else:
-                    raise RuntimeError("Unknown model name for _log_layer.")
-        out=old
-    def _insert_hooks(self):
-       
-        for name, layer in self.encode_image.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-        for name, layer in self.encoder.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-        for name, layer in self.model2.transformer.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
-        for name, layer in self.model2.visual.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
-       
+            out=out[0]       
+            # print("permuted")
+        if out.shape[0] == self.hparams.train_batch_size:
+            self.__store(out,name,model,layer)
+        
+        elif out.shape[1] == self.hparams.train_batch_size:
+            self.__store(out.permute(1,0,*torch.arange(len(out.shape)-2)+2),name,model,layer)
 
+    def __store(self,out,name, model,layer):
+        X = out.flatten(1)
+        X= (X @ X.t()).fill_diagonal_(0)
+        if (torch.isnan(X).any() or torch.isinf(X).any()):
+            self.naninfcount+=1
+            if self.current_epoch==0 and hasattr(layer, 'weight'):
+                nn.init.normal_(layer.weight, std=0.02)
+        if model == "model1":
+            #if name already exists in dictionary, change name to name+1
+            while name in self.model1_features:
+                name=name+"1"
+            self.model1_features[name] = X
+
+        elif model == "model2":
+            while name in self.model1_features:
+                name=name+"1"
+            self.model2_features[name] = X
+
+        else:
+            raise RuntimeError("Unknown model name for _log_layer.")
+    def _insert_hooks(self):
+        self.handles=[]
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encode_image.named_modules()])
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encoder.named_modules()])
+        a=len(self.handles)
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.visual.named_modules()])
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
+        b=len(self.handles)-a
+        return a,b
   
     def export(self):
         """
@@ -209,7 +275,12 @@ class LightningCLIPModule(LightningModule):
                      save_path: str = None,
                      title: str = None):
         fig, ax = plt.subplots()
-        hsic_matrix = self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0)))
+        print(self.hsic_matrix1.shape) #102,30
+        print(self.hsic_matrix0.shape)#30
+        print(self.hsic_matrix2.shape)#102
+        t=self.hsic_matrix0.unsqueeze(1)*self.hsic_matrix2.unsqueeze(0)
+        print(torch.sum(torch.abs(t)==t))
+        hsic_matrix = self.hsic_matrix1 / torch.sqrt(torch.abs(t))
         if not torch.isnan(hsic_matrix).any():
             warn("HSIC computation resulted in NANs")
             
@@ -363,7 +434,7 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #config=config.__dict__
         config=config.__dict__
         dir=config.get("dir",dir)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784", save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784", save_dir=dir)
         # print(logtool.experiment)
         # logtool.experiment.config={}
         # logtool.experiment.config.update(config)
@@ -373,8 +444,8 @@ def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
         import wandb
         print("here")
-        run=wandb.init(project="6DIMContrSweep",entity="st7ma784",name="6DIMContrSweep",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCachespliteinSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        run=wandb.init(project="6DIMCLIPTOKSweep",entity="st7ma784",name="6DIMCLIPTOKSweep",config=config)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784",experiment=run, save_dir=dir)
         config=run.config.as_dict()
     print("config",config)
     
@@ -419,7 +490,7 @@ def train(config={
             max_epochs=40,
             #profiler="advanced",
             logger=logtool,
-            strategy="dp",
+            strategy="ddp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization
