@@ -452,7 +452,7 @@ def train(config={
         "transformer_heads": 32,
         "transformer_layers": 4,
         "JSE":False,
-    },dir=None,devices="auto",accelerator="auto",Dataset=None,logtool=None):
+    },dir=None,devices=None,accelerator=None,Dataset=None,logtool=None):
     model=LightningCLIPModule(  learning_rate = config["learning_rate"],
                                 JSE=config["JSE"],
                                     train_batch_size=config["batch_size"],
@@ -466,6 +466,10 @@ def train(config={
         from BuildSpainDataSet import COCODataModule
 
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
+    if devices is None:
+        devices=config.get("devices","auto")
+    if accelerator is None:
+        accelerator=config.get("accelerator","auto")
     # print("Training with config: {}".format(config))
     Dataset.batch_size=config["batch_size"]
     callbacks=[
