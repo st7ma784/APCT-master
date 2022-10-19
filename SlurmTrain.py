@@ -2,7 +2,6 @@ from test_tube import SlurmCluster
 from test_tube import HyperOptArgumentParser
 #from trainclip_v2 import train as train_clip
 import os
-from trainclip_v37_einsumimp import wandbtrain as train
 from HOparser import parser
     #overwrte the run function to remove srun
 def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, on_gpu):
@@ -90,6 +89,8 @@ def __build_slurm_command(self, trial, slurm_cmd_script_path, timestamp, exp_i, 
 
 
 if __name__ == '__main__':
+    from trainclip_v37_einsumimp import wandbtrain as train
+
     argsparser = parser(strategy='random_search')
     hyperparams = argsparser.parse_args()
     # Enable cluster training.
