@@ -81,7 +81,7 @@ class myCluster(SlurmCluster):
                                                     slurm_cmd_script_path,
                                                     HyperOptArgumentParser.SLURM_EXP_CMD,
                                                     exp_i)
-        self.script_name= '/'.join(os.path.realpath(sys.argv[0]).split('/')[:-1]+['trainclip_v37_einsumimp.py'])
+        #self.script_name= '/'.join(os.path.realpath(sys.argv[0]).split('/')[:-1]+['trainclip_v37_einsumimp.py'])
 
         sub_commands.append('{} {} {}'.format(self.python_cmd, self.script_name, trial_args))
         # build full command with empty lines in between
