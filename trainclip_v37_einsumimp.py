@@ -166,7 +166,8 @@ class LightningCLIPModule(LightningModule):
         self.eval()
     #     #import clip model here]
         self.naninfcount=0
-        self.model2,_ = clip.load("ViT-B/32", device=self.device).eval()
+        self.model2,_ = clip.load("ViT-B/32", device=self.device)
+        self.model2.eval()
         a,b=self._insert_hooks()
         self.eval()
         
