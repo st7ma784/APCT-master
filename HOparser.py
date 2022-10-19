@@ -1,7 +1,7 @@
 from test_tube import HyperOptArgumentParser
 
 class parser(HyperOptArgumentParser):
-    def __init__(self,*args,strategy="grid_search"):
+    def __init__(self,*args,strategy="random_search",**kwargs):
 
         super().__init__( *args,strategy=strategy, add_help=False) # or random search
         #more info at https://williamfalcon.github.io/test-tube/hyperparameter_optimization/HyperOptArgumentParser/
@@ -26,6 +26,6 @@ if __name__== "__main__":
     myparser=parser()
     hyperparams = myparser.parse_args()
     print(hyperparams.__dict__)
-    for trial in hyperparams.trials(num=10):
+    for trial in hyperparams.generate_trials(10):
         print(trial)
         
