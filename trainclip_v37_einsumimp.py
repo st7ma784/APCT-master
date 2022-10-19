@@ -1,17 +1,14 @@
 
-from re import A
 import pytorch_lightning
 from pytorch_lightning import LightningModule
-from sympy import O
+from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 import torch.nn as nn
 import torch
 import os
 from functools import partial
-from itertools import product
 import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer,QuickGELU
-from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 import clip
 from warnings import warn
