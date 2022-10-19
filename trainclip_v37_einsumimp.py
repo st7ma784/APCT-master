@@ -503,7 +503,7 @@ if __name__ == '__main__':
     from HOparser import parser
     myparser=parser()
     hyperparams = myparser.parse_args()
-    trial=hyperparams.trials(1)[0]
+    trial=hyperparams.generate_trials(1)[0]
     wandbtrain(trial)
     #config=hyperparams.__dict__
     # config={
