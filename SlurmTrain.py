@@ -99,7 +99,7 @@ if __name__ == '__main__':
         python_cmd='python3',
         #test_tube_exp_name="BASELINE CLIP",
     )
-    cluster.__build_slurm_command = __build_slurm_command
+    #cluster.__build_slurm_command = __build_slurm_command
     # Email results if your hpc supports it.
     cluster.notify_job_status(
         email='st7ma784@gmail.com', on_done=True, on_fail=True)
