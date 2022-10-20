@@ -9,6 +9,7 @@ wandb/
 *.so
 MSCOCOES/
 *.jpg
+HSIC*
 # Distribution / packaging
 .Python
 build/

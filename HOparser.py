@@ -17,6 +17,7 @@ class parser(HyperOptArgumentParser):
         self.opt_list("--transformer_width", default=128, type=int, options=[128,256,512], tunable=True)
         self.opt_list("--devices", default=1, type=int, options=[1], tunable=False)
         self.opt_list("--accelerator", default='gpu', type=str, options=['gpu'], tunable=False)
+        self.opt_list("--num_trials", default=1, type=int, tunable=False)
         #self.opt_range('--neurons', default=50, type=int, tunable=True, low=100, high=800, nb_samples=8, log_base=None)
 
 
