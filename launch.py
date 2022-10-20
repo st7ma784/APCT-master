@@ -122,6 +122,8 @@ if __name__ == '__main__':
     
     defaultConfig=hyperparams.__dict__
     NumTrials=hyperparams.num_trials
+    #Add check for ISOnBede... if so then make sure we do SBATCH first. You don't want to mess up a BEDE allocation,
+    
     if NumTrials ==0: #We'll do a local run... 
         trial=hyperparams.generate_trials(1)[0]
         wandbtrain(trial)
