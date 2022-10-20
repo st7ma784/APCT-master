@@ -520,18 +520,18 @@ def SlurmRun(dir):
     slurm_commands={"account":"bdlan05"}#,"partition":"gpu"} Leaving this part out to run on non-bede slurm
     sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
     sub_commands.extend([
-         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
+        'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export CONDADIR=/nobackup/projects/bdlan05/$USER',
         'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
         'source $CONDADIR/miniconda/etc/profile.d/conda.sh',
         'conda activate $CONDADIR/miniconda/envs/open-ce',# ...and activate the conda environment
     ])
     #sub_commands.append("srun python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=1 --node_rank=0 --master_addr='
-    sub_commands = [x.lstrip() for x in sub_commands]        
     script_name= os.path.realpath(sys.argv[0])
-    sub_commands.append('{} {} --dir {}'.format("python3", script_name,dir))
+    sub_commands.append('{} {} --dir {} --num_trials 0'.format("python3", script_name,dir))
+    sub_commands = [x.lstrip() for x in sub_commands]        
+
     full_command = '\n'.join(sub_commands)
-    print("RUNNING ")
     return full_command
 
  #Config should look like 
@@ -556,7 +556,7 @@ if __name__ == '__main__':
     
     defaultConfig=hyperparams.__dict__
     NumTrials=hyperparams.num_trials
-    if NumTrials ==0 : #We'll do a local run... 
+    if NumTrials ==0: #We'll do a local run... 
         trial=hyperparams.generate_trials(1)[0]
         wandbtrain(trial)
 
