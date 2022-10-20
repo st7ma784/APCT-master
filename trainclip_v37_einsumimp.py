@@ -546,7 +546,6 @@ def SlurmRun(dir):
     # }
 
 if __name__ == '__main__':
-    from SlurmTrain import SlurmRun
     from HOparser import parser
     myparser=parser()
     hyperparams = myparser.parse_args()
