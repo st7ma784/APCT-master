@@ -21,5 +21,5 @@ conda activate $CONDADIR/miniconda/envs/open-ce # ...and activate the conda envi
 
 #source activate open-ce
 #python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainagent.py  --data_dir /nobackup/projects/bdlan05/smander3/data
-python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/trainclip_v37_einsumimp.py  --dir /nobackup/projects/bdlan05/smander3/data
+python3 /nobackup/projects/bdlan05/smander3/6DimCOCO/launch.py  --dir /nobackup/projects/bdlan05/smander3/data
 

@@ -12,7 +12,6 @@ from clip.model import Transformer,LayerNorm,VisionTransformer,QuickGELU
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 import clip
 from warnings import warn
-from mpl_toolkits import axes_grid1
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 
@@ -64,9 +63,7 @@ class LightningCLIPModule(LightningModule):
                 output_dim=embed_dim
             )
         
-        #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
-
         self.vocab_size = vocab_size
         self.automatic_optimization=False
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
@@ -79,11 +76,9 @@ class LightningCLIPModule(LightningModule):
         self.model1_info={'Name':"SelfCLIP",}
         self.model2_info={'Name': "Stock CLIP",}
         self.naninfcount=0
-        print("ici")
+        
 
     def build_attention_mask(self):
-        # lazily create causal attention mask, with full attention between the vision tokens
-        # pytorch uses additive attention mask; fill with -inf
         mask = torch.empty(self.context_length, self.context_length)
         mask.fill_(float("-inf"))
         mask.triu_(1)  # zero out the lower diagonal
@@ -91,9 +86,7 @@ class LightningCLIPModule(LightningModule):
   
     def initialize_parameters(self):
         nn.init.normal_(self.token_embedding.weight, std=0.02)
- 
         nn.init.normal_(self.positional_embedding, std=0.01)
-
         proj_std = (self.encoder.width ** -0.5) * ((2 * self.encoder.layers) ** -0.5)
         attn_std = self.encoder.width ** -0.5
         fc_std = (2 * self.encoder.width) ** -0.5
@@ -124,58 +117,27 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x.contiguous()
 
-    def orig_HSIC(self, K, L):
-        """
-        Computes the unbiased estimate of HSIC metric.
-        Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
-        """
-        return torch.add(torch.sum(K*L.t()),torch.div((torch.sum(K)*torch.sum(L)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(L,dim=1))*2),(K.shape[0] - 2)))
-            
-    def orig_HSIC2(self, K):
-        return self.orig_HSIC(K,K)
-        
-    
     def batch_HSIC2(self,K):
         a=torch.sum(K,dim=-1)
         b=torch.sum(K,dim=-2)
         c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[1] - 1),torch.sum(a*b,dim=1),alpha=2)
         output=torch.add(torch.einsum('a...->a',torch.pow(K,2)),torch.div(c,(K.shape[1] - 2)))
         return output
-        
-    def batch_HSIC1(self,K,L):
-        a=torch.sum(L,dim=-1)
-        b=torch.sum(K,dim=-2)
-        c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1))/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
-        return torch.add(torch.einsum('a...->a',K*L),torch.div(c,(K.shape[1] - 2)))
-        
-        
+                
     def batch_HSIC3(self,K,L):
         a=torch.sum(L,dim=-1)
         b=torch.sum(K,dim=-2)
         c=torch.sub(torch.sum(b,dim=-1)*torch.sum(a,dim=-1)/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
         return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
-         
-     # def combineHSIC(self,HSICA,HSICB):
-    #     #HSICA= torch.add(torch.sum(K*K.t()),torch.div((torch.sum(K)*torch.sum(K)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(K,dim=1))*2),(K.shape[0] - 2)))
-    #     #HSICB= torch.add(torch.sum(L*L.t()),torch.div((torch.sum(L)*torch.sum(L)/(L.shape[0] - 1)) - (torch.sum(torch.sum(L,dim=0)*torch.sum(L,dim=1))*2),(L.shape[0] - 2)))
-    #     K= 
-    #     L=
-    #     # output= torch.add(torch.sum(K*L.t()),torch.div((torch.sum(K)*torch.sum(L)/(K.shape[0] - 1)) - (torch.sum(torch.sum(K,dim=0)*torch.sum(L,dim=1))*2),(K.shape[0] - 2)))
 
-    
     def on_validation_epoch_start(self):
         self.eval()
-    #     #import clip model here]
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
-        a,b=self._insert_hooks()
+        self._insert_hooks()
         self.eval()
         
-        
-        #self.hsic_matrix1=torch.zeros((b,a),device=self.device)
-        #self.hsic_matrix2=torch.zeros(a, device=self.device)
-
     def validation_step(self,batch,*args):
 
         self.model1_features = {}  #reset list of forward hooks
@@ -189,24 +151,20 @@ class LightningCLIPModule(LightningModule):
         if not hasattr(self,'hsic_matrix0'):
             self.hsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
         self.hsic_matrix0=torch.add(self.hsic_matrix0,self.batch_HSIC2(a)) 
-        
-        #print(self.hsic_matrix0.shape)
         a=torch.stack(list(self.model2_features.values()))
         if not hasattr(self,'hsic_matrix2'):
             self.hsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
         self.hsic_matrix2=torch.add(self.hsic_matrix2,self.batch_HSIC2(a))
-        #print(self.hsic_matrix2.shape)
         joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
         if not hasattr(self,'hsic_matrix1'):
             self.hsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
-        #print(self.hsic_matrix1.shape)
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
-        self.plot_results("HSIC{}.jpg".format(self.current_epoch))
+        self.plot_results("./imagelogs/HSIC{}.jpg".format(self.current_epoch))
         if self.logger is not None:
-            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
+            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["./imagelogs/HSIC{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
         print(self.naninfcount)
@@ -273,27 +231,22 @@ class LightningCLIPModule(LightningModule):
                      save_path: str = None,
                      title: str = None):
         fig, ax = plt.subplots()
-        #print(self.hsic_matrix1.shape) #102,30
-        #print(self.hsic_matrix0.shape)#30
-        #print(self.hsic_matrix2.shape)#102
         t=self.hsic_matrix0.unsqueeze(1)*self.hsic_matrix2.unsqueeze(0)
         print(torch.sum(torch.abs(t)==t))
-        hsic_matrix = self.hsic_matrix1 / torch.sqrt(torch.abs(t))
+        r=torch.sqrt(torch.abs(t))
+        r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
+        hsic_matrix = self.hsic_matrix1 / r
         if not torch.isnan(hsic_matrix).any():
             warn("HSIC computation resulted in NANs")
-            
         im = ax.imshow(hsic_matrix.cpu(), origin='lower', cmap='magma')
         ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)
         ax.set_ylabel(f"Layers {self.model1_info['Name']}", fontsize=15)
-
         if title is not None:
             ax.set_title(f"{title}", fontsize=18)
         else:
             ax.set_title(f"{self.model1_info['Name']} vs {self.model2_info['Name']}", fontsize=18)
-
         add_colorbar(im)
         plt.tight_layout()
-
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
@@ -426,157 +379,3 @@ class LightningCLIPModule(LightningModule):
       
 
         return [optimizerA]
- 
-def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
-    if config is not None:
-        config=config.__dict__
-        dir=config.get("dir",dir)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784", save_dir=dir)
-        print(config)
-
-    else: 
-        #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
-        import wandb
-        print("here")
-        run=wandb.init(project="6DIMCLIPTOKSweep",entity="st7ma784",name="6DIMCLIPTOKSweep",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784",experiment=run, save_dir=dir)
-        config=run.config.as_dict()
-    
-    train(config,dir,devices,accelerator,Dataset,logtool)
-
-def train(config={
-        "batch_size":16,
-        "learning_rate":2e-3,
-        "precision":16,
-        "embed_dim": 512,
-        "transformer_width": 512,
-        "transformer_heads": 32,
-        "transformer_layers": 4,
-        "JSE":False,
-    },dir=None,devices=None,accelerator=None,Dataset=None,logtool=None):
-    model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                JSE=config["JSE"],
-                                    train_batch_size=config["batch_size"],
-                                    embed_dim= config[ "embed_dim"],
-                                    transformer_width= config["transformer_width"],
-                                    transformer_heads= config["transformer_heads"],
-                                    transformer_layers= config["transformer_layers"])
-    if dir is None:
-        dir=config.get("dir",".")
-    if Dataset is None:
-        from BuildSpainDataSet import COCODataModule
-
-        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
-    if devices is None:
-        devices=config.get("devices","auto")
-    if accelerator is None:
-        accelerator=config.get("accelerator","auto")
-    # print("Training with config: {}".format(config))
-    Dataset.batch_size=config["batch_size"]
-    callbacks=[
-        TQDMProgressBar(),
-        EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
-    ]
-    p=config['precision']
-    if isinstance(p,str):
-        p=16 if p=="bf16" else int(p)  ##needed for BEDE
-    print("Launching with precision",p)
-    trainer=pytorch_lightning.Trainer(
-            devices=devices,
-            auto_select_gpus=True,
-            accelerator=accelerator,
-            max_epochs=40,
-            #profiler="advanced",
-            logger=logtool,
-            strategy="ddp",
-            num_nodes=int(os.getenv("SLURM_NNODES",1)),
-            callbacks=callbacks,
-            #gradient_clip_val=0.25, Not supported for manual optimization
-            fast_dev_run=False,
-            precision=p
-    )
-    if config["batch_size"] !=1:
-        
-        trainer.fit(model,Dataset)
-    else:
-        return 0 #No need to train if batch size is 1
-
-def SlurmRun(dir):
-
-    job_with_version = '{}v{}'.format("Train37", 0)
-
-    sub_commands =['#!/bin/bash',
-        '# Auto-generated by test-tube (https://github.com/williamFalcon/test-tube)',   
-        '#SBATCH --time={}'.format( '24:00:00'),# Max run time
-        '#SBATCH --job-name={}'.format(job_with_version), 
-        '#SBATCH --nodes=1',  #Nodes per experiment
-        '#SBATCH --gres=gpu:1'#{}'.format(per_experiment_nb_gpus),
-        #'#SBATCH --gres=gpu:{}:{}'.format(self.gpu_type, self.per_experiment_nb_gpus),    If you want to specify a GPU type
-        #f'#SBATCH --signal=USR1@{5 * 60}',
-        '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
-        '#SBATCH --mail-user={}'.format('st7ma784@gmail.com'),
-       
-
-    ]
-    slurm_commands={"account":"bdlan05"}#,"partition":"gpu"} Leaving this part out to run on non-bede slurm
-    sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
-    sub_commands.extend([
-        'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
-        'export CONDADIR=/nobackup/projects/bdlan05/$USER',
-        'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
-        'source $CONDADIR/miniconda/etc/profile.d/conda.sh',
-        'conda activate $CONDADIR/miniconda/envs/open-ce',# ...and activate the conda environment
-    ])
-    #sub_commands.append("srun python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=1 --node_rank=0 --master_addr='
-    script_name= os.path.realpath(sys.argv[0])
-    sub_commands.append('{} {} --dir {} --num_trials 0'.format("python3", script_name,dir))
-    sub_commands = [x.lstrip() for x in sub_commands]        
-
-    full_command = '\n'.join(sub_commands)
-    return full_command
-
- #Config should look like 
-    
-    # config={
-    #     "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
-    #     #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
-    #     # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
-    #     "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
-    #     "precision":'bf16',         #[32,16,'bf16']
-    #     "embed_dim": 512,
-    #     "transformer_width": 512,
-    #     "transformer_heads": 16,
-    #     "transformer_layers": 5,
-    #     "JSE":True,
-    # }
-
-if __name__ == '__main__':
-    from HOparser import parser
-    myparser=parser()
-    hyperparams = myparser.parse_args()
-    
-    defaultConfig=hyperparams.__dict__
-    NumTrials=hyperparams.num_trials
-    if NumTrials ==0: #We'll do a local run... 
-        trial=hyperparams.generate_trials(1)[0]
-        wandbtrain(trial)
-
-    #OR To run with Default Args
-    else: 
-        from subprocess import call
-
-        command=SlurmRun(defaultConfig.get("dir","."))
-        #Save command to file
-        # 
-        # Run sbatch command
-        slurm_cmd_script_path = os.path.join(defaultConfig.get("dir","."), "slurm_cmd.sh")
-
-        with open(slurm_cmd_script_path, "w") as f:
-            f.write(command)
-        for i in range(0,NumTrials):
-            print('\nlaunching exp...')
-            result = call('{} {}'.format("sbatch", slurm_cmd_script_path), shell=True)
-            if result == 0:
-                print('launched exp ', slurm_cmd_script_path)
-            else:
-                print('launch failed...')  

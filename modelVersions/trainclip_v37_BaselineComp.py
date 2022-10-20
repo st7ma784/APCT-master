@@ -12,7 +12,6 @@ from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 # from deepspeed.ops.adam import FusedAdam,DeepSpeedCPUAdam
 import clip
 from warnings import warn
-from mpl_toolkits import axes_grid1
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 
@@ -355,93 +354,4 @@ class LightningCLIPModule(LightningModule):
 
         return [optimizerA]
  
-def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
-    if config is not None:
-        #config=config.__dict__
-        config=config.__dict__
-        dir=config.get("dir",dir)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMBaselineCompSweep",entity="st7ma784", save_dir=dir)
-        # print(logtool.experiment)
-        # logtool.experiment.config={}
-        # logtool.experiment.config.update(config)
-        # logtool.log_hyperparams(config)
 
-    else: 
-        #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
-        import wandb
-        print("here")
-        run=wandb.init(project="6DIMBaselineCompSweep",entity="st7ma784",name="6DIMBaselineCompSweep",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMBaselineCompSweep",entity="st7ma784",experiment=run, save_dir=dir)
-        config=run.config.as_dict()
-    print("config",config)
-    
-    train(config,dir,devices,accelerator,Dataset,logtool)
-
-def train(config={
-        "batch_size":16,
-        "learning_rate":2e-3,
-        "precision":16,
-        "embed_dim": 512,
-        "transformer_width": 512,
-        "transformer_heads": 32,
-        "transformer_layers": 4,
-        "JSE":False,
-    },dir=".",devices="auto",accelerator="auto",Dataset=None,logtool=None):
-    model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                JSE=config["JSE"],
-                                    train_batch_size=config["batch_size"],
-                                    embed_dim= config[ "embed_dim"],
-                                    transformer_width= config["transformer_width"],
-                                    transformer_heads= config["transformer_heads"],
-                                    transformer_layers= config["transformer_layers"])
-    if Dataset is None:
-        from BuildSpainDataSet import COCODataModule
-
-        Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
-    # print("Training with config: {}".format(config))
-    Dataset.batch_size=config["batch_size"]
-    callbacks=[
-        TQDMProgressBar(),
-        EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
-    ]
-    p=config['precision']
-    if isinstance(p,str):
-        p=16 if p=="bf16" else int(p)  ##needed for BEDE
-    print("Launching with precision",p)
-    trainer=pytorch_lightning.Trainer(
-            devices="auto",
-            accelerator=accelerator,
-            max_epochs=40,
-            #profiler="advanced",
-            logger=logtool,
-            strategy="dp",
-            num_nodes=int(os.getenv("SLURM_NNODES",1)),
-            callbacks=callbacks,
-            #gradient_clip_val=0.25, Not supported for manual optimization
-            fast_dev_run=False,
-            precision=p
-    )
-    if config["batch_size"] !=1:
-        
-        trainer.fit(model,Dataset)
-    else:
-        return 0 #No need to train if batch size is 1
-if __name__ == '__main__':
-
-    from HOparser import parser
-    myparser=parser()
-    hyperparams = myparser.parse_args()
-    config=hyperparams.__dict__
-    # config={
-    #     "batch_size":4, #[1,4,8,16,32,64] #V2: 13 for 8GB VRAM, 22 for 24GB VRAM (ETA 00:48:00)
-    #     #                                          #v3: 19 for 10GB VRAM (ETA 1:46:00),   23 for 24GB VRAM  
-    #     # in 2 dim, 19 : 23 Batchs is the difference of 168 Samples, in 6 dim its 144 Million. 
-    #     "learning_rate":2e-5,   #[2e-4,1e-4,5e-5,2e-5,1e-5,4e-6]
-    #     "precision":'bf16',         #[32,16,'bf16']
-    #     "embed_dim": 512,
-    #     "transformer_width": 512,
-    #     "transformer_heads": 16,
-    #     "transformer_layers": 5,
-    #     "JSE":True,
-    # }
-    train(config)
