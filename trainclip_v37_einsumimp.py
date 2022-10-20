@@ -509,7 +509,7 @@ def SlurmRun(dir):
         '#SBATCH --time={}'.format( '24:00:00'),# Max run time
         '#SBATCH --job-name={}'.format(job_with_version), 
         '#SBATCH --nodes=1',  #Nodes per experiment
-        '#SBATCH --gres=gpu:1'#{}'.format(per_experiment_nb_gpus),
+        #'#SBATCH --gres=gpu:1'#{}'.format(per_experiment_nb_gpus),
         #'#SBATCH --gres=gpu:{}:{}'.format(self.gpu_type, self.per_experiment_nb_gpus),    If you want to specify a GPU type
         f'#SBATCH --signal=USR1@{5 * 60}',
         '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
