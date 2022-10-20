@@ -162,9 +162,9 @@ class LightningCLIPModule(LightningModule):
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
-        self.plot_results("./imagelogs/HSIC{}.jpg".format(self.current_epoch))
+        self.plot_results("HSIC{}.jpg".format(self.current_epoch))
         if self.logger is not None:
-            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["./imagelogs/HSIC{}.jpg".format(self.current_epoch)])
+            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
         print(self.naninfcount)
