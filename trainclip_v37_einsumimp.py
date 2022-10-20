@@ -517,7 +517,7 @@ def SlurmRun(dir):
        
 
     ]
-    slurm_commands={"account":"bdlan05","partition":"gpu"}
+    slurm_commands={"account":"bdlan05"}#,"partition":"gpu"} Leaving this part out to run on non-bede slurm
     sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
     sub_commands.extend([
          'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
@@ -556,9 +556,10 @@ if __name__ == '__main__':
     
     defaultConfig=hyperparams.__dict__
     NumTrials=hyperparams.num_trials
-    if NumTrials < 1: #We'll do a local run... 
+    if NumTrials ==0 : #We'll do a local run... 
         trial=hyperparams.generate_trials(1)[0]
         wandbtrain(trial)
+
     #OR To run with Default Args
     else: 
         from subprocess import call
