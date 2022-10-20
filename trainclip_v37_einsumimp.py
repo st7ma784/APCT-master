@@ -427,7 +427,7 @@ class LightningCLIPModule(LightningModule):
 
         return [optimizerA]
  
-def wandbtrain(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
+def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
     if config is not None:
         config=config.__dict__
         dir=config.get("dir",dir)
