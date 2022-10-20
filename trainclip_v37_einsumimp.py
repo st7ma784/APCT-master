@@ -512,7 +512,7 @@ def SlurmRun(dir):
         '#SBATCH --gres=gpu:1'#{}'.format(per_experiment_nb_gpus),
         #'#SBATCH --gres=gpu:{}:{}'.format(self.gpu_type, self.per_experiment_nb_gpus),    If you want to specify a GPU type
         f'#SBATCH --signal=USR1@{5 * 60}',
-        '#SBATCH --mail-type={}'.format(','.join('END,FAIL')),
+        '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
         '#SBATCH --mail-user={}'.format('st7ma784@gmail.com'),
         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export CONDADIR=/nobackup/projects/bdlan05/$USER',
