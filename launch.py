@@ -4,8 +4,6 @@ from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
 import os,sys
 
-
-
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
     if config is not None:
         config=config.__dict__
@@ -119,12 +117,11 @@ if __name__ == '__main__':
     from HOparser import parser
     myparser=parser()
     hyperparams = myparser.parse_args()
-    
     defaultConfig=hyperparams.__dict__
     NumTrials=hyperparams.num_trials
     #Add check for ISOnBede... if so then make sure we do SBATCH first. You don't want to mess up a BEDE allocation,
-    
-    if NumTrials ==0: #We'll do a local run... 
+    #BEDE has Env var containing hostname  #HOSTNAME=login2.bede.dur.ac.uk check we arent launching on this node
+    if NumTrials ==0 and not str(os.getenv("HOSTNAME","localhost")).startswith("login"): #We'll do a local run... 
         trial=hyperparams.generate_trials(1)[0]
         wandbtrain(trial)
 
