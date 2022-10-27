@@ -144,3 +144,4 @@ train2017/*
 val2017/*
 annotations/*
 models--gpt2/*
+slurm_cmdtrial*

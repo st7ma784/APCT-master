@@ -6,7 +6,6 @@ from torch.profiler import profile, record_function, ProfilerActivity
 from warnings import warn
 from mpl_toolkits import axes_grid1
 import matplotlib.pyplot as plt
-from torch_cka import CKA
 def add_colorbar(im, aspect=10, pad_fraction=0.5, **kwargs):
     """Add a vertical color bar to an image plot."""
     divider = axes_grid1.make_axes_locatable(im.axes)
@@ -108,6 +107,8 @@ def _BHSIC( K, L):
         return result
 
 if __name__ == "__main__":
+    from torch_cka import CKA
+
     resnet18 = models.resnet18(pretrained=True)
     resnet34 = models.resnet34(pretrained=True)
 
