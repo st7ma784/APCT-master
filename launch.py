@@ -112,7 +112,7 @@ def SlurmRun(dir,trialconfig):
     script_name= os.path.realpath(sys.argv[0]) #Find this scripts name...
     trialArgs=__get_hopt_params(trialconfig)
 
-    sub_commands.append('{} {} --dir {} --num_trials 0 {}'.format(comm, script_name,dir,trialArgs))
+    sub_commands.append('{} {} {}'.format(comm, script_name,dir,trialArgs))
     #when launched, this script will be called with no trials, and so drop into the wandbtrain section, 
     sub_commands = [x.lstrip() for x in sub_commands]        
 
