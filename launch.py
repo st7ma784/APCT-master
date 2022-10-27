@@ -78,7 +78,7 @@ def train(config={
     else:
         return 0 #No need to train if batch size is 1
 
-def SlurmRun(dir,trialconfig):
+def SlurmRun(trialconfig):
 
     job_with_version = '{}v{}'.format("SINGLEGPUTESTLAUNCH", 0)
 
@@ -112,7 +112,7 @@ def SlurmRun(dir,trialconfig):
     script_name= os.path.realpath(sys.argv[0]) #Find this scripts name...
     trialArgs=__get_hopt_params(trialconfig)
 
-    sub_commands.append('{} {} {}'.format(comm, script_name,dir,trialArgs))
+    sub_commands.append('{} {} {}'.format(comm, script_name,trialArgs))
     #when launched, this script will be called with no trials, and so drop into the wandbtrain section, 
     sub_commands = [x.lstrip() for x in sub_commands]        
 
@@ -180,7 +180,7 @@ if __name__ == '__main__':
         trials=hyperparams.generate_trials(NumTrials)
 
         for i,trial in enumerate(trials):             
-            command=SlurmRun(defaultConfig.get("dir","."),trial)
+            command=SlurmRun(trial)
             slurm_cmd_script_path = os.path.join(defaultConfig.get("dir","."),"slurm_cmdtrial{}.sh".format(i))
             with open(slurm_cmd_script_path, "w") as f:
               f.write(command)
