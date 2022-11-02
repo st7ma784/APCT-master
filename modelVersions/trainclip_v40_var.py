@@ -4,6 +4,7 @@ from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
 import numpy as np
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
@@ -177,8 +178,9 @@ class LightningCLIPModule(LightningModule):
         
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-      
-        return [optimizer]
+        scheduler = ReduceLROnPlateau(optimizer, 'min')
+
+        return [optimizer],[scheduler]
 import wandb
 def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     import time

@@ -1,6 +1,6 @@
 
 import pytorch_lightning
-from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping,ReduceLROnPlateau
+from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 from modelVersions.trainclip_v40_var import LightningCLIPModule
 import os,sys
 
@@ -53,7 +53,6 @@ def train(config={
     callbacks=[
         TQDMProgressBar(),
         EarlyStopping(monitor="train_loss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
-        ReduceLROnPlateau(monitor="train_loss", mode="min",patience=3,check_finite=True,stopping_threshold=0.001)
     ]
     p=config['precision']
     if isinstance(p,str):
@@ -69,7 +68,7 @@ def train(config={
             max_epochs=40,
             #profiler="advanced",
             logger=logtool,
-            strategy="dp",
+            strategy="ddp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization
