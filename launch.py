@@ -1,22 +1,22 @@
 
 import pytorch_lightning
-from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-from modelVersions.trainclip_v41_gradcache import LightningCLIPModule
+from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping,ReduceLROnPlateau
+from modelVersions.trainclip_v40_var import LightningCLIPModule
 import os,sys
 
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
     if config is not None:
         config=config.__dict__
         dir=config.get("dir",dir)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784", save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweepv4",entity="st7ma784", save_dir=dir)
         print(config)
 
     else: 
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
         import wandb
         print("here")
-        run=wandb.init(project="6DIMCLIPTOKSweep",entity="st7ma784",name="6DIMCLIPTOKSweep",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweep",entity="st7ma784",experiment=run, save_dir=dir)
+        run=wandb.init(project="6DIMCLIPTOKSweepv4",entity="st7ma784",name="6DIMCLIPTOKSweepv4",config=config)
+        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweepv4",entity="st7ma784",experiment=run, save_dir=dir)
         config=run.config.as_dict()
     
     train(config,dir,devices,accelerator,Dataset,logtool)
@@ -52,14 +52,15 @@ def train(config={
     Dataset.batch_size=config["batch_size"]
     callbacks=[
         TQDMProgressBar(),
-        EarlyStopping(monitor="imloss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
+        EarlyStopping(monitor="train_loss", mode="min",patience=10,check_finite=True,stopping_threshold=0.001),
+        ReduceLROnPlateau(monitor="train_loss", mode="min",patience=3,check_finite=True,stopping_threshold=0.001)
     ]
     p=config['precision']
     if isinstance(p,str):
         p=16 if p=="bf16" else int(p)  ##needed for BEDE
     #for windows .... 
     if sys.platform == "win32":
-        os.environ["PL_TORCH_DISTRIBUTED_BACKEND"]='gloo'
+       os.environ["PL_TORCH_DISTRIBUTED_BACKEND"]='gloo'
     print("Launching with precision",p)
     trainer=pytorch_lightning.Trainer(
             devices=devices,
@@ -68,7 +69,7 @@ def train(config={
             max_epochs=40,
             #profiler="advanced",
             logger=logtool,
-            strategy="ddp",
+            strategy="dp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization

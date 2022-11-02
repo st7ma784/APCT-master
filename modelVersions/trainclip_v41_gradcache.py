@@ -102,43 +102,36 @@ class LightningCLIPModule(LightningModule):
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        image_features = image_features / image_features.norm(dim=1, keepdim=True)
+        #image_features = image_features / image_features.norm(dim=1, keepdim=True)
 
         caption_features1=self.encode_text(captions1)
-        caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
+        #caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
 
         caption_features2=self.encode_text(captions2)
-        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
+        #caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
 
         caption_features3=self.encode_text(captions3)
-        caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
+        #caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
 
         caption_features4=self.encode_text(captions4)
-        caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
+        #caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
 
         caption_features5=self.encode_text(captions5)
-        caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
+        #caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
         return image_features,caption_features1,caption_features2,caption_features3,caption_features4,caption_features5
 
 
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
-        I=I.view(I.shape[0],1,1,1,1,1,-1)
-        C1=C1.view(1,C1.shape[0],1,1,1,1,-1)
-        C2=C2.view(1,1,C2.shape[0],1,1,1,-1)
-        C3=C3.view(1,1,1,C3.shape[0],1,1,-1)
-        C4=C4.view(1,1,1,1,C4.shape[0],1,-1)
-        C5=C5.view(1,1,1,1,1,C5.shape[0],-1)
-        shapes=torch.broadcast_shapes(I.shape, C1.shape, C2.shape, C3.shape, C4.shape, C5.shape)
-        #shape is bxbxbxbxbxb x 512 x 6 
-        #Loss=torch.mean(torch.var(torch.stack([I.expand(shapes), C1.expand(shapes), C2.expand(shapes), C3.expand(shapes), C4.expand(shapes), C5.expand(shapes)], dim=-1), dim=-1),dim=-1)
-        #variance shape bxbxbxbxbxb x features
-        arr=torch.stack([I.expand(shapes), C1.expand(shapes), C2.expand(shapes), C3.expand(shapes), C4.expand(shapes), C5.expand(shapes)], dim=-1)
-        #print(arr.shape)
-        s=torch.linalg.svdvals(arr).permute(*range(-1,6))[0]
-        print(s.shape)
-        #print('here')
-        #mean shape bxbxbxbxbxb 
-        return s   
+      
+        shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],-1)
+        arr=torch.stack([I.view(I.shape[0],1,1,1,1,1,-1).expand(shapes), 
+                        C1.view(1,C1.shape[0],1,1,1,1,-1).expand(shapes),
+                        C2.view(1,1,C2.shape[0],1,1,1,-1).expand(shapes),
+                        C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
+                        C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
+                        C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
+        return torch.pow(torch.sub(arr,torch.mean(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
+        
         
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         opt_a=self.optimizers()
@@ -152,45 +145,45 @@ class LightningCLIPModule(LightningModule):
         with torch.no_grad():
             clogitsi,clogits1,clogits2,clogits3,clogits4,clogits5=self(im, captions[:,0], captions[:,1], captions[:,2], captions[:,3], captions[:,4])
         image_features=self.encode_image(im)
-        image_features = image_features / image_features.norm(dim=1, keepdim=True)
-        Loss1=self.loss(self.calculate_loss(image_features, clogits1, clogits2, clogits3, clogits4, clogits5)*logs,labels)
+        #image_features = image_features / image_features.norm(dim=1, keepdim=True)
+        Loss1=self.loss(self.calculate_loss(image_features, clogits1, clogits2, clogits3, clogits4, clogits5).permute(*range(-5,1))*logs,labels)
         #Loss1=self.calculate_loss(image_features, clogits1, clogits2, clogits3, clogits4, clogits5)*logs
         self.manual_backward(Loss1,retain_graph=True)
-        self.log('Image1', Loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
+        self.log('train_loss', Loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del image_features,Loss1
         caption_features1=self.encode_text(captions[:,0])
-        caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-        Loss2=self.loss(self.calculate_loss(clogitsi, caption_features1, clogits2, clogits3, clogits4, clogits5)*logs,labels)
+        #caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
+        Loss2=self.loss(self.calculate_loss(clogitsi, caption_features1, clogits2, clogits3, clogits4, clogits5).permute(*range(-4,2))*logs,labels)
         #Loss2=self.calculate_loss(clogitsi, caption_features1, clogits2, clogits3, clogits4, clogits5)*logs
         self.manual_backward(Loss2,retain_graph=True)
         self.log('Caption1', Loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features1,Loss2
         caption_features2=self.encode_text(captions[:,1])
-        caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
-        Loss3=self.loss(self.calculate_loss(clogitsi, clogits1, caption_features2, clogits3, clogits4, clogits5)*logs,labels)
+        #caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
+        Loss3=self.loss(self.calculate_loss(clogitsi, clogits1, caption_features2, clogits3, clogits4, clogits5).permute(*range(-3,3))*logs,labels)
         #Loss3=self.calculate_loss(clogitsi, clogits1, caption_features2, clogits3, clogits4, clogits5)*logs
         self.manual_backward(Loss3,retain_graph=True)
         self.log('Caption2', Loss3, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features2,Loss3
 
         caption_features3=self.encode_text(captions[:,2])
-        caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-        Loss4=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, caption_features3, clogits4, clogits5)*logs,labels)
+        #caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
+        Loss4=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, caption_features3, clogits4, clogits5).permute(*range(-2,4))*logs,labels)
         #Loss4= self.calculate_loss(clogitsi, clogits1, clogits2, caption_features3, clogits4, clogits5)*logs
         self.manual_backward(Loss4,retain_graph=True)
         self.log('Caption3', Loss4, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features3,Loss4
 
         caption_features4=self.encode_text(captions[:,3])
-        caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-        Loss5=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, caption_features4, clogits5)*logs,labels)
+        #caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
+        Loss5=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, caption_features4, clogits5).permute(*range(-1,5))*logs,labels)
         #Loss5=self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, caption_features4, clogits5)*logs
         self.manual_backward(Loss5,retain_graph=True)
         self.log('Caption4', Loss5, prog_bar=True,enable_graph=False,rank_zero_only=True)
         del caption_features4,Loss5
 
         caption_features5=self.encode_text(captions[:,4])
-        caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
+        #caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
         Loss6=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, clogits4, caption_features5)*logs,labels)
         #Loss6=self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, clogits4, caption_features5)*logs
         self.manual_backward(Loss6,retain_graph=True)
