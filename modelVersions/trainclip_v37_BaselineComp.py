@@ -118,94 +118,102 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x.contiguous()
 
-    def orig_HSIC(self, K, L):
-        """
-        Computes the unbiased estimate of HSIC metric.
-        Reference: https://arxiv.org/pdf/2010.15327.pdf Eq (3)
-        """
-        N=K.shape[0]
-        return torch.add(torch.trace(K@L),torch.div(torch.sum(K)*torch.sum(L)/(N - 1) - (torch.sum(K@L) * 2 ), (N - 2)))
-        
+    def batch_HSIC2(self,K):
+        a=torch.sum(K,dim=-1)
+        b=torch.sum(K,dim=-2)
+        c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[1] - 1),torch.sum(a*b,dim=1),alpha=2)
+        output=torch.add(torch.einsum('a...->a',torch.pow(K,2)),torch.div(c,(K.shape[1] - 2)))
+        return output
+                
+    def batch_HSIC3(self,K,L):
+        a=torch.sum(L,dim=-1)
+        b=torch.sum(K,dim=-2)
+        c=torch.sub(torch.sum(b,dim=-1)*torch.sum(a,dim=-1)/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
+        return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
+
     def on_validation_epoch_start(self):
         self.eval()
-        self.freeze()
-    #     #import clip model here]
+        self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
+        self.model2.eval()
         self._insert_hooks()
         self.eval()
-        self.model2.eval()
-
-
+        
     def validation_step(self,batch,*args):
 
         self.model1_features = {}  #reset list of forward hooks
-        self.model2_features = {}  
+        self.model2_features = {}  #reset list of forward hooks
         self.encode_image(batch[0]) #run through main mode
-        ###If your model has supervised data, then perhaps do a loss with your date here!
+        self.encode_text(batch[1][:,0])
+
         self.model2.encode_image(batch[0])# to compare supervision model
-        self.encode_text(batch[1].flatten(start_dim=0,end_dim=1))
-        Self.model2.encode_text(batch[1].flatten(start_dim=0,end_dim=1))
-        N = len(self.model1_features.values())
-        M = len(self.model2_features.values())
-        print("N",N)
-        print("M",M)
-        out=torch.stack([self.orig_HSIC(K, K) for K in self.model1_features.values()])
-        self.hsic_matrix0=torch.add(self.hsic_matrix0,out) if hasattr(self, 'hsic_matrix0') else out
-        out=torch.stack([self.orig_HSIC(L, L) for L in self.model2_features.values()])
-        self.hsic_matrix2=torch.add(self.hsic_matrix2,out) if hasattr(self, 'hsic_matrix2') else out
-        out=torch.stack([self.orig_HSIC(K, L) for K in self.model1_features.values() for L in self.model2_features.values()])
-        self.hsic_matrix1=torch.add(self.hsic_matrix1,out.reshape(N,M)) if hasattr(self, 'hsic_matrix1') else out.reshape(N,M)
-        self.hsic_matrix = self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0)))
-        if not torch.isnan(self.hsic_matrix).any():
-            warn("HSIC computation resulted in NANs")
-            
+        self.model2.encode_text(batch[1][:,0])
+        a=torch.stack(list(self.model1_features.values()))
+        if not hasattr(self,'hsic_matrix0'):
+            self.hsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        self.hsic_matrix0=torch.add(self.hsic_matrix0,self.batch_HSIC2(a)) 
+        a=torch.stack(list(self.model2_features.values()))
+        if not hasattr(self,'hsic_matrix2'):
+            self.hsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        self.hsic_matrix2=torch.add(self.hsic_matrix2,self.batch_HSIC2(a))
+        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
+        if not hasattr(self,'hsic_matrix1'):
+            self.hsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
-        self.plot_results("HSICBaselineComp{}.jpg".format(self.current_epoch))
+        self.plot_results("HSIC{}.jpg".format(self.current_epoch))
         if self.logger is not None:
-            self.logger.log_image(key="HSICBaselineComp{}".format(self.current_epoch), images=["HSICBaselineComp{}.jpg".format(self.current_epoch)])
+            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
+        print(self.naninfcount)
         del self.model2
+        del self.hsic_matrix0
+        del self.hsic_matrix1
+        del self.hsic_matrix2
+        
 
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
-        with torch.no_grad():
-            if isinstance(out, tuple):
-                out = out[0]
+        if isinstance(out, tuple):
+            out=out[0]       
+            # print("permuted")
+        if out.shape[0] == self.hparams.train_batch_size:
+            self.__store(out,name,model,layer)
+        
+        elif out.shape[1] == self.hparams.train_batch_size:
+            self.__store(out.permute(1,0,*torch.arange(len(out.shape)-2)+2),name,model,layer)
 
-            if out.shape[1]== self.hparams.train_batch_size or out.shape[1] ==self.hparams.train_batch_size*5:
-                #permute
-                pass
+    def __store(self,out,name, model,layer):
+        X = out.flatten(1)
+        X= (X @ X.t()).fill_diagonal_(0)
+        if (torch.isnan(X).any() or torch.isinf(X).any()):
+            self.naninfcount+=1
+            if self.current_epoch==0 and hasattr(layer, 'weight'):
+                nn.init.normal_(layer.weight, std=0.02)
+        if model == "model1":
+            #if name already exists in dictionary, change name to name+1
+            while name in self.model1_features:
+                name=name+"1"
+            self.model1_features[name] = X
 
-            if out.shape[0] == self.hparams.train_batch_size or out.shape[0] ==self.hparams.train_batch_size*5:
-                #permute
-                print("LOGGING : ", model, name, out.shape)
-                if model == "model1":
-                    X = out.flatten(1)
-                    self.model1_features[name] = (X @ X.t()).fill_diagonal_(0)
-                elif model == "model2":
-                    X = out.flatten(1)
-                    self.model2_features[name] = (X @ X.t()).fill_diagonal_(0)
-                else:
-                    raise RuntimeError("Unknown model name for _log_layer.")
+        elif model == "model2":
+            while name in self.model1_features:
+                name=name+"1"
+            self.model2_features[name] = X
 
+        else:
+            raise RuntimeError("Unknown model name for _log_layer.")
     def _insert_hooks(self):
-       
-        for name, layer in self.encoder.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-      
-      
-        for name, layer in self.encode_images.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-      
-      
-        for name, layer in self.model2.transformer.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model1", name)))
-      
-        for name, layer in self.model2.visual.named_modules():
-            self.handles.append(layer.register_forward_hook(partial(self._log_layer, "model2", name)))
-       
+        self.handles=[]
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encode_image.named_modules()])
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encoder.named_modules()])
+        a=len(self.handles)
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.visual.named_modules()])
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
+        b=len(self.handles)-a
+        return a,b
   
     def export(self):
         """
@@ -215,7 +223,7 @@ class LightningCLIPModule(LightningModule):
         return {
             "model1_name": "Trained",
             "model2_name": "PretrainedModel",
-            "CKA": self.hsic_matrix,
+            "CKA":self.hsic_matrix1 / (torch.sqrt(self.hsic_matrix0.unsqueeze(1))*torch.sqrt(self.hsic_matrix2.unsqueeze(0))),
             "model1_layers": self.named_modules(),
             "model2_layers": self.model2.named_modules(),
         }
@@ -224,20 +232,25 @@ class LightningCLIPModule(LightningModule):
                      save_path: str = None,
                      title: str = None):
         fig, ax = plt.subplots()
-        im = ax.imshow(self.hsic_matrix.cpu(), origin='lower', cmap='magma')
+        t=self.hsic_matrix0.unsqueeze(1)*self.hsic_matrix2.unsqueeze(0)
+        print(torch.sum(torch.abs(t)==t))
+        r=torch.sqrt(torch.abs(t))
+        r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
+        hsic_matrix = self.hsic_matrix1 / r
+        if not torch.isnan(hsic_matrix).any():
+            warn("HSIC computation resulted in NANs")
+        im = ax.imshow(hsic_matrix.cpu(), origin='lower', cmap='magma')
         ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)
         ax.set_ylabel(f"Layers {self.model1_info['Name']}", fontsize=15)
-
         if title is not None:
             ax.set_title(f"{title}", fontsize=18)
         else:
             ax.set_title(f"{self.model1_info['Name']} vs {self.model2_info['Name']}", fontsize=18)
-
         add_colorbar(im)
         plt.tight_layout()
-
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
+
 
     
     def training_step(self, batch, batch_idx,optimizer_idx=0):

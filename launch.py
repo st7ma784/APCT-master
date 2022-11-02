@@ -1,7 +1,7 @@
 
 import pytorch_lightning
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
+from modelVersions.trainclip_v41_gradcache import LightningCLIPModule
 import os,sys
 
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
@@ -57,6 +57,9 @@ def train(config={
     p=config['precision']
     if isinstance(p,str):
         p=16 if p=="bf16" else int(p)  ##needed for BEDE
+    #for windows .... 
+    if sys.platform == "win32":
+        os.environ["PL_TORCH_DISTRIBUTED_BACKEND"]='gloo'
     print("Launching with precision",p)
     trainer=pytorch_lightning.Trainer(
             devices=devices,
