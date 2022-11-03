@@ -7,7 +7,7 @@ class parser(HyperOptArgumentParser):
         #more info at https://williamfalcon.github.io/test-tube/hyperparameter_optimization/HyperOptArgumentParser/
         self.add_argument("--dir",default="/nobackup/projects/bdlan05/$USER/data",type=str)
         self.add_argument("--log_path",default="/nobackup/projects/bdlan05/$USER/logs/",type=str)
-        self.opt_list("--learning_rate", default=0.01, type=float, options=[1e-5, 2e-4,1e-4,5e-5], tunable=True)
+        self.opt_list("--learning_rate", default=0.001, type=float, options=[1e-5, 2e-4,1e-4,5e-5], tunable=True)
         self.opt_list("--batch_size", default=10, type=int, options=[6,8,10], tunable=True)
         self.opt_list("--JSE", default=False, type=bool, options=[True,False], tunable=True)
         self.opt_list("--precision", default=16, options=[16], tunable=False)
