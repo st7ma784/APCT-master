@@ -113,7 +113,7 @@ class LightningCLIPModule(LightningModule):
                         C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
                         C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
                         C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
-        return 1-torch.pow(torch.sub(arr,torch.median(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
+        return 1-torch.pow(torch.sub(arr,torch.median(arr, dim=-1, keepdim=True).values),2).sum(dim=-1).sum(dim=-1)
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
