@@ -4,6 +4,7 @@ from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
 import numpy as np
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from pytorch_lightning.callbacks import TQDMProgressBar
@@ -51,10 +52,14 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
-        
+        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
         self.vocab_size = vocab_size
-        self.automatic_optimization=False
+
         self.vocab_size = vocab_size
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
@@ -99,28 +104,6 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def forward(self, im, captions1, captions2, captions3, captions4, captions5):
-        #if self.useclip_im:
-        image_features=self.encode_image(im)
-        #image_features = image_features / image_features.norm(dim=1, keepdim=True)
-
-        caption_features1=self.encode_text(captions1)
-        #caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-
-        caption_features2=self.encode_text(captions2)
-        #caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
-
-        caption_features3=self.encode_text(captions3)
-        #caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-
-        caption_features4=self.encode_text(captions4)
-        #caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-
-        caption_features5=self.encode_text(captions5)
-        #caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-        return image_features,caption_features1,caption_features2,caption_features3,caption_features4,caption_features5
-
-
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
       
         shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],-1)
@@ -130,75 +113,74 @@ class LightningCLIPModule(LightningModule):
                         C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
                         C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
                         C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
-        return 1-torch.pow(torch.sub(arr,torch.mean(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
-        
-        
+        return 1-torch.pow(torch.sub(arr,torch.median(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
+    def forward(self, im, captions1, captions2, captions3, captions4, captions5):
+        #if self.useclip_im:
+        image_features=self.encode_image(im)
+        #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
+        caption_features1=self.encode_text(captions1)
+        #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
+        caption_features2=self.encode_text(captions2)
+        #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
+        caption_features3=self.encode_text(captions3)
+        #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
+        caption_features4=self.encode_text(captions4)
+        #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
+        caption_features5=self.encode_text(captions5)
+        #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
+
+        # normalized features
+
+        #each of these is B x D
+        #in a square we get BxB Matrix of DxD matrices for logits
+        #for 3 features we get BxBxB matrix of DxDxD matrices for logits
+        logs=self.logit_scale.exp()
+        # Combine features into a grid of BxBxBxBxBxB X Featuresx6,  5 captions, 1 image
+        #features = torch.stack([image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5], dim=2)
+        # This gets us shape (B,F,6)
+        #We want to get a BxBxBxBxBxB X 6 X F matrix
+        #features = features.permute(0,2,1)
+        Loss=self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
+        logits1=Loss.permute(1,2,3,4,5,0)
+        logits2=Loss.permute(2,3,4,5,0,1)
+        logits3=Loss.permute(3,4,5,0,1,2)
+        logits4=Loss.permute(4,5,0,1,2,3)
+        logits5=Loss.permute(5,0,1,2,3,4)
+
+        return Loss,logits1,logits2,logits3,logits4,logits5
+
+
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        opt_a=self.optimizers()
-        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.loss.ignore_index))))
-        labels=labels+self.loss.ignore_index
+        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index))))
+
+        
+        labels=labels+self.lossim.ignore_index
         #self.labels=self.labels.to(self.device)
         im,captions= batch[0],batch[1]
-        logs=self.logit_scale.exp()
+        #print(captions.shape)#Batchx 5 Capions x Length
+        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+        #print(logits1.shape ,labels.shape)
+        loss1 = self.loss1(logits1, labels)
+        loss2 = self.loss2(logits2, labels)
+        loss3 = self.loss3(logits3, labels)
+        loss4 = self.loss4(logits4, labels)
+        loss5 = self.loss5(logits5, labels)
+        lossim = self.lossim(imlogits, labels)
 
-        #print(captions.shape)#Batchx 5 Capions x 
-        with torch.no_grad():
-            clogitsi,clogits1,clogits2,clogits3,clogits4,clogits5=self(im, captions[:,0], captions[:,1], captions[:,2], captions[:,3], captions[:,4])
-        image_features=self.encode_image(im)
-        #image_features = image_features / image_features.norm(dim=1, keepdim=True)
-        Loss1=self.loss(self.calculate_loss(image_features, clogits1, clogits2, clogits3, clogits4, clogits5).permute(*range(-5,1))*logs,labels)
-        #Loss1=self.calculate_loss(image_features, clogits1, clogits2, clogits3, clogits4, clogits5)*logs
-        self.manual_backward(Loss1,retain_graph=True)
-        self.log('train_loss', Loss1, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del image_features,Loss1
-        caption_features1=self.encode_text(captions[:,0])
-        #caption_features1 = caption_features1 / caption_features1.norm(dim=1, keepdim=True)
-        Loss2=self.loss(self.calculate_loss(clogitsi, caption_features1, clogits2, clogits3, clogits4, clogits5).permute(*range(-4,2))*logs,labels)
-        #Loss2=self.calculate_loss(clogitsi, caption_features1, clogits2, clogits3, clogits4, clogits5)*logs
-        self.manual_backward(Loss2,retain_graph=True)
-        self.log('Caption1', Loss2, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features1,Loss2
-        caption_features2=self.encode_text(captions[:,1])
-        #caption_features2 = caption_features2 / caption_features2.norm(dim=1, keepdim=True)
-        Loss3=self.loss(self.calculate_loss(clogitsi, clogits1, caption_features2, clogits3, clogits4, clogits5).permute(*range(-3,3))*logs,labels)
-        #Loss3=self.calculate_loss(clogitsi, clogits1, caption_features2, clogits3, clogits4, clogits5)*logs
-        self.manual_backward(Loss3,retain_graph=True)
-        self.log('Caption2', Loss3, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features2,Loss3
+        loss = lossim+loss1+loss2+loss3+loss4+loss5
+        loss=loss/6
+        loss = loss.mean()
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        return {"loss": loss}
 
-        caption_features3=self.encode_text(captions[:,2])
-        #caption_features3 = caption_features3 / caption_features3.norm(dim=1, keepdim=True)
-        Loss4=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, caption_features3, clogits4, clogits5).permute(*range(-2,4))*logs,labels)
-        #Loss4= self.calculate_loss(clogitsi, clogits1, clogits2, caption_features3, clogits4, clogits5)*logs
-        self.manual_backward(Loss4,retain_graph=True)
-        self.log('Caption3', Loss4, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features3,Loss4
-
-        caption_features4=self.encode_text(captions[:,3])
-        #caption_features4 = caption_features4 / caption_features4.norm(dim=1, keepdim=True)
-        Loss5=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, caption_features4, clogits5).permute(*range(-1,5))*logs,labels)
-        #Loss5=self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, caption_features4, clogits5)*logs
-        self.manual_backward(Loss5,retain_graph=True)
-        self.log('Caption4', Loss5, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features4,Loss5
-
-        caption_features5=self.encode_text(captions[:,4])
-        #caption_features5 = caption_features5 / caption_features5.norm(dim=1, keepdim=True)
-        Loss6=self.loss(self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, clogits4, caption_features5)*logs,labels)
-        #Loss6=self.calculate_loss(clogitsi, clogits1, clogits2, clogits3, clogits4, caption_features5)*logs
-        self.manual_backward(Loss6,retain_graph=True)
-        self.log('Caption5', Loss6, prog_bar=True,enable_graph=False,rank_zero_only=True)
-        del caption_features5,Loss6
-
-        opt_a.step()
-        opt_a.zero_grad()
             
     def configure_optimizers(self):
         
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-      
-        return [optimizer]
+        lr_schedulers = {"scheduler": ReduceLROnPlateau(optimizer), "monitor": "train_loss"}
+
+        return [optimizer],[lr_schedulers]
 import wandb
 def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     import time

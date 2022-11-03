@@ -3,6 +3,8 @@ from pytorch_lightning import LightningModule
 import torch.nn as nn
 import torch
 from functools import partial
+from torch.optim.lr_scheduler import ReduceLROnPlateau
+
 import numpy as np
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
@@ -262,5 +264,7 @@ class LightningCLIPModule(LightningModule):
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
       
 
-        return [optimizerA]
+        lr_schedulers = {"scheduler": ReduceLROnPlateau(optimizerA), "monitor": "train_loss"}
+
+        return [optimizerA],[lr_schedulers]
  

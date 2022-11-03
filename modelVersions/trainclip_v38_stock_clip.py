@@ -1,6 +1,7 @@
 
 from pytorch_lightning import LightningModule
 import torch.nn as nn
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch
 from functools import partial
 import numpy as np
@@ -392,5 +393,7 @@ class LightningCLIPModule(LightningModule):
         optimizerA = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
         optimizerB=torch.optim.Adam(self.model1.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-
-        return [optimizerA,optimizerB]
+        lr_schedulerA = {"scheduler": ReduceLROnPlateau(optimizerA), "monitor": "train_loss"}
+        lr_schedulerB = {"scheduler": ReduceLROnPlateau(optimizerB), "monitor": "train_loss"}
+        
+        return [optimizerA,optimizerB],[lr_schedulerA,lr_schedulerB]

@@ -15,6 +15,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -363,8 +364,8 @@ class LightningCLIPModule(LightningModule):
         
         optimizerA = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-      
 
-        return [optimizerA]
- 
+        lr_schedulers = {"scheduler": ReduceLROnPlateau(optimizerA), "monitor": "train_loss"}
+
+        return [optimizerA],[lr_schedulers]
 

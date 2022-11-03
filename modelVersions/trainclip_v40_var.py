@@ -113,21 +113,21 @@ class LightningCLIPModule(LightningModule):
                         C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
                         C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
                         C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
-        return torch.pow(torch.sub(arr,torch.mean(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
+        return 1-torch.pow(torch.sub(arr,torch.mean(arr, dim=-1, keepdim=True)),2).sum(dim=-1).sum(dim=-1)
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
+        #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
-        caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
+        #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
         caption_features2=self.encode_text(captions2)
-        caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
+        #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
         caption_features3=self.encode_text(captions3)
-        caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
+        #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
         caption_features4=self.encode_text(captions4)
-        caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
+        #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
         caption_features5=self.encode_text(captions5)
-        caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
+        #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
         # normalized features
 
@@ -178,9 +178,9 @@ class LightningCLIPModule(LightningModule):
         
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
-        scheduler = ReduceLROnPlateau(optimizer, 'min')
+        lr_schedulers = {"scheduler": ReduceLROnPlateau(optimizer), "monitor": "train_loss"}
 
-        return [optimizer],[scheduler]
+        return [optimizer],[lr_schedulers]
 import wandb
 def testtrainfunc(config=None,dir="/Data",devices="auto",accelerator="auto",Dataset=None):
     import time

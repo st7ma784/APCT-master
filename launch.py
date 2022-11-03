@@ -1,7 +1,7 @@
 
 import pytorch_lightning
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-from modelVersions.trainclip_v40_var import LightningCLIPModule
+from modelVersions.trainclip_v42_median import LightningCLIPModule
 import os,sys
 
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
