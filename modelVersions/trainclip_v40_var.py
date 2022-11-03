@@ -13,8 +13,8 @@ class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
                 learning_rate,
-                useclip_en=True,
-                useclip_im=True,
+                useclip_en='v40',
+                useclip_im=False,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
                 weight_decay: float = 0.0,
