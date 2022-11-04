@@ -66,6 +66,7 @@ class LightningCLIPModule(LightningModule):
         self.ln_final = LayerNorm(transformer_width)
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        self.transformer_width=transformer_width
         self.initialize_parameters()
         print("done")
 
@@ -112,23 +113,23 @@ class LightningCLIPModule(LightningModule):
                         C2.view(1,1,C2.shape[0],1,1,1,-1).expand(shapes),
                         C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
                         C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
-                        C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
-        arr=arr-arr.mean(dim=-1,keepdim=True)
-        return 1-torch.sum(torch.norm(arr,p=2,dim=-1),dim=-1)
+                        C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)],dim=0)
+        arr=arr-arr.mean(dim=0,keepdim=True)
+        return 1-torch.sum(torch.norm(arr,p=2,dim=-1),dim=0)
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
+        image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
-        #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
+        caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
         caption_features2=self.encode_text(captions2)
-        #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
+        caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
         caption_features3=self.encode_text(captions3)
-        #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
+        caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
         caption_features4=self.encode_text(captions4)
-        #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
+        caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
         caption_features5=self.encode_text(captions5)
-        #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
+        caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
         # normalized features
 

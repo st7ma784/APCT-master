@@ -66,6 +66,7 @@ class LightningCLIPModule(LightningModule):
         self.ln_final = LayerNorm(transformer_width)
         self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
+        self.transformer_width=transformer_width
         self.initialize_parameters()
         print("done")
 
@@ -106,41 +107,40 @@ class LightningCLIPModule(LightningModule):
 
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
       
-        shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],-1)
-        arr=torch.stack([I.view(I.shape[0],1,1,1,1,1,-1).expand(shapes), 
-                        C1.view(1,C1.shape[0],1,1,1,1,-1).expand(shapes),
-                        C2.view(1,1,C2.shape[0],1,1,1,-1).expand(shapes),
-                        C3.view(1,1,1,C3.shape[0],1,1,-1).expand(shapes),
-                        C4.view(1,1,1,1,C4.shape[0],1,-1).expand(shapes),
-                        C5.view(1,1,1,1,1,C5.shape[0],-1).expand(shapes)], dim=-1)
-        arr=arr-arr.mean(dim=-1,keepdim=True)
-        return 1-torch.sum(torch.norm(arr,p=2,dim=-1),dim=-1)
+        #shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],self.transformer_width)
+        #arrMean=torch.zeros((1,1,1,1,1,1,self.transformer_width),device=self.device)
+        arrMean=torch.add(  torch.div( I,6).view( I.shape[0],1,1,1,1,1,-1),
+                            torch.div(C1,6).view(1,C1.shape[0],1,1,1,1,-1)).add(
+                torch.add(  torch.div(C2,6).view(1,1,C2.shape[0],1,1,1,-1),
+                            torch.div(C3,6).view(1,1,1,C3.shape[0],1,1,-1)).add(
+                torch.add(  torch.div(C4,6).view(1,1,1,1,C4.shape[0],1,-1),
+                            torch.div(C5,6).view(1,1,1,1,1,C5.shape[0],-1))))
+        #Now we have the mean in the final dim shape (B,B,B,B,B,B,512)
+        stack=torch.stack( [torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1)),
+                            torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1)),
+                            torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1)),
+                            torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1)),
+                            torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1)),
+                            torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))],dim=0)
+        #
+        return 1-torch.sum(torch.norm(stack,p=2,dim=0) ,dim=-1)        #print(Arr.shape)
+        
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         #if self.useclip_im:
         image_features=self.encode_image(im)
-        #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
+        image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
-        #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
+        caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
         caption_features2=self.encode_text(captions2)
-        #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
+        caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
         caption_features3=self.encode_text(captions3)
-        #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
+        caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
         caption_features4=self.encode_text(captions4)
-        #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
+        caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
         caption_features5=self.encode_text(captions5)
-        #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
+        caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
-        # normalized features
-
-        #each of these is B x D
-        #in a square we get BxB Matrix of DxD matrices for logits
-        #for 3 features we get BxBxB matrix of DxDxD matrices for logits
         logs=self.logit_scale.exp()
-        # Combine features into a grid of BxBxBxBxBxB X Featuresx6,  5 captions, 1 image
-        #features = torch.stack([image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5], dim=2)
-        # This gets us shape (B,F,6)
-        #We want to get a BxBxBxBxBxB X 6 X F matrix
-        #features = features.permute(0,2,1)
         Loss=self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
         logits1=Loss.permute(1,2,3,4,5,0)
         logits2=Loss.permute(2,3,4,5,0,1)
@@ -153,8 +153,7 @@ class LightningCLIPModule(LightningModule):
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index))))
-
-        
+      
         labels=labels+self.lossim.ignore_index
         #self.labels=self.labels.to(self.device)
         im,captions= batch[0],batch[1]
