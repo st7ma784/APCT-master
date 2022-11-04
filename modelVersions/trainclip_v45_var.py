@@ -116,6 +116,7 @@ class LightningCLIPModule(LightningModule):
                 torch.add(  torch.div(C4,6).view(1,1,1,1,C4.shape[0],1,-1),
                             torch.div(C5,6).view(1,1,1,1,1,C5.shape[0],-1))))
         #Now we have the mean in the final dim shape (B,B,B,B,B,B,512)
+        #Normally, we'd do something like Val-mean. However, we do this the other way round for speed, and we can do this because abs(a-b)===abs(b-a)
         stack=torch.stack( [torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1)),
                             torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1)),
                             torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1)),
