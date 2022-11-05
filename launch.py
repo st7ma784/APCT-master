@@ -1,7 +1,6 @@
 
 import pytorch_lightning
 from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-from modelVersions.trainclip_v45_var import LightningCLIPModule
 import os,sys
 
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
@@ -26,18 +25,19 @@ def train(config={
         "learning_rate":2e-3,
         "precision":16,
         "embed_dim": 512,
+        "codeversion":4,
         "transformer_width": 512,
         "transformer_heads": 32,
         "transformer_layers": 4,
         "JSE":False,
     },dir=None,devices=None,accelerator=None,Dataset=None,logtool=None):
-    model=LightningCLIPModule(  learning_rate = config["learning_rate"],
-                                JSE=config["JSE"],
-                                    train_batch_size=config["batch_size"],
-                                    embed_dim= config[ "embed_dim"],
-                                    transformer_width= config["transformer_width"],
-                                    transformer_heads= config["transformer_heads"],
-                                    transformer_layers= config["transformer_layers"])
+    if config["codeversion"]==4:
+        from modelVersions.trainclip_v46_var import LightningCLIPModule
+    elif config["codeversion"]==3:
+        from modelVersions.trainclip_v45_var import LightningCLIPModule
+    elif config["codeversion"]==1:
+        from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
+    model=LightningCLIPModule( train_batch_size=config["batch_size"], **config)
     if dir is None:
         dir=config.get("dir",".")
     if Dataset is None:
