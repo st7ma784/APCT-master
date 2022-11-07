@@ -143,11 +143,11 @@ class LightningCLIPModule(LightningModule):
 
         logs=self.logit_scale.exp()
         Loss=self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
-        logits1=Loss.permute(1,2,3,4,5,0)
-        logits2=Loss.permute(2,3,4,5,0,1)
+        logits1=Loss.permute(5,0,1,2,3,4)
+        logits2=Loss.permute(4,5,0,1,2,3)
         logits3=Loss.permute(3,4,5,0,1,2)
-        logits4=Loss.permute(4,5,0,1,2,3)
-        logits5=Loss.permute(5,0,1,2,3,4)
+        logits4=Loss.permute(2,3,4,5,0,1)
+        logits5=Loss.permute(1,2,3,4,5,0)
 
         return Loss,logits1,logits2,logits3,logits4,logits5
 

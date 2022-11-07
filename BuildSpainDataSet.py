@@ -47,6 +47,8 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', idx)
             return None
+        #Object detection target is self.coco.loadAnns(self.coco.getAnnIds(id))
+
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
                     add_special_tokens = True, # Add '[CLS]' and '[SEP]'
