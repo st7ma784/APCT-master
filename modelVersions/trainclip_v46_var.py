@@ -219,60 +219,60 @@ class LightningCLIPModule(LightningModule):
         self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
         self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
 
-    def validation_step(self,batch,batch_idx,dataloader_idx):
-        if dataloader_idx==0:
-            self.model1_features = {}  #reset list of forward hooks
-            self.model2_features = {}  #reset list of forward hooks
-            i=self.encode_image(batch[0]) #run through main mode
-            self.model2.encode_image(batch[0])# to compare supervision model
-            a=torch.stack(list(self.model1_features.values()))
-            if not hasattr(self,'IMhsic_matrix0'):
-                self.IMhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
-            self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,self.batch_HSIC2(a)) 
-            a=torch.stack(list(self.model2_features.values()))
-            if not hasattr(self,'IMhsic_matrix2'):
-                self.IMhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
-            self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,self.batch_HSIC2(a))
-            joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
-            if not hasattr(self,'IMhsic_matrix1'):
-                self.IMhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
-            self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
+    def validation_step(self,batch,*args):
+        
+        self.model1_features = {}  #reset list of forward hooks
+        self.model2_features = {}  #reset list of forward hooks
+        i=self.encode_image(batch[0]) #run through main mode
+        self.model2.encode_image(batch[0])# to compare supervision model
+        a=torch.stack(list(self.model1_features.values()))
+        if not hasattr(self,'IMhsic_matrix0'):
+            self.IMhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,self.batch_HSIC2(a)) 
+        a=torch.stack(list(self.model2_features.values()))
+        if not hasattr(self,'IMhsic_matrix2'):
+            self.IMhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,self.batch_HSIC2(a))
+        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
+        if not hasattr(self,'IMhsic_matrix1'):
+            self.IMhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
 
-            ##Now Do Text
-            self.model1_features = {}  #reset list of forward hooks
-            self.model2_features = {}  #reset list of forward hooks
-            t=self.encode_text(batch[1][:,0]) #run through main mode
-            self.model2.encode_text(batch[1][:,0])# to compare supervision model
-            a=torch.stack(list(self.model1_features.values()))
-            if not hasattr(self,'CAPhsic_matrix0'):
-                self.CAPhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
-            self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 
-            a=torch.stack(list(self.model2_features.values()))
-            if not hasattr(self,'CAPhsic_matrix2'):
-                self.CAPhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
-            self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,self.batch_HSIC2(a))
-            joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
-            if not hasattr(self,'CAPhsic_matrix1'):
-                self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
-            self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
-            #Just do the classification loss on Cifar100
-            category = batch[2]
-            
-                   #do a Linear regression on logits to target 
-            for i in range(10):
-                self.CAPoptimizer.zero_grad()
-                self.IMoptimizer.zero_grad()
-                loss2=self.criterion(self.CapLinear(t),category)
-                loss = self.criterion(self.ImLinear(i),category)
-                loss.backward()
-                loss2.backward()
-                self.CAPoptimizer.step()
-                self.IMoptimizer.step()
-            
-            self.log('VALIMCIFARloss',loss,prog_bar=True)
-            self.log('VALCAPCIFARloss',loss2,prog_bar=True)
-            #loss is how well the linear probe fits the target
-            return loss,loss2
+        ##Now Do Text
+        self.model1_features = {}  #reset list of forward hooks
+        self.model2_features = {}  #reset list of forward hooks
+        t=self.encode_text(batch[1][:,0]) #run through main mode
+        self.model2.encode_text(batch[1][:,0])# to compare supervision model
+        a=torch.stack(list(self.model1_features.values()))
+        if not hasattr(self,'CAPhsic_matrix0'):
+            self.CAPhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 
+        a=torch.stack(list(self.model2_features.values()))
+        if not hasattr(self,'CAPhsic_matrix2'):
+            self.CAPhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,self.batch_HSIC2(a))
+        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
+        if not hasattr(self,'CAPhsic_matrix1'):
+            self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
+        #Just do the classification loss on Cifar100
+        category = batch[2]
+        
+                #do a Linear regression on logits to target 
+        for i in range(10):
+            self.CAPoptimizer.zero_grad()
+            self.IMoptimizer.zero_grad()
+            loss2=self.criterion(self.CapLinear(t),category)
+            loss = self.criterion(self.ImLinear(i),category)
+            loss.backward()
+            loss2.backward()
+            self.CAPoptimizer.step()
+            self.IMoptimizer.step()
+        
+        self.log('VALIMCIFARloss',loss,prog_bar=True)
+        self.log('VALCAPCIFARloss',loss2,prog_bar=True)
+        #loss is how well the linear probe fits the target
+        return loss,loss2
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
