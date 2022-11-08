@@ -210,12 +210,11 @@ class LightningCLIPModule(LightningModule):
         return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
 
     def on_validation_epoch_start(self):
-        self.eval()
+        
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
-        self.eval()
        
         self.ImLinear.train()
         self.CapLinear.train()
