@@ -286,7 +286,6 @@ class LightningCLIPModule(LightningModule):
         del self.model2
         del self.IMhsic_matrix0,self.IMhsic_matrix1,self.IMhsic_matrix2
         del self.CAPhsic_matrix1,self.CAPhsic_matrix2,self.CAPhsic_matrix0
-        del self.CAPoptimizer, self.IMoptimizer
         del self.classifier
         self.features=[]
         
