@@ -77,6 +77,9 @@ class LightningCLIPModule(LightningModule):
         self.model2_info={'Name': "Stock CLIP",}
         self.naninfcount=0
         print("done")
+        self.ImLinear=nn.Linear(512,100)
+        self.CapLinear=nn.Linear(512,100)
+        
 
 
     def build_attention_mask(self):
@@ -205,16 +208,12 @@ class LightningCLIPModule(LightningModule):
         return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
 
     def on_validation_epoch_start(self):
-        self.eval()
+        self.train()
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
-        self.eval()
-        self.ImLinear=nn.Linear(512,100)
-        self.ImLinear.to(self.device)
-        self.CapLinear=nn.Linear(512,100)
-        self.CapLinear.to(self.device)
+        
         self.criterion = torch.nn.CrossEntropyLoss(size_average = False)
         self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
         self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
