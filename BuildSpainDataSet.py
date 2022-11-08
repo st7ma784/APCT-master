@@ -72,7 +72,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img,target,instance[0].get("category_id",-100)
+        return img,target,i
 
 
 
