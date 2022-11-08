@@ -54,9 +54,10 @@ class COCODataset(CocoCaptions):
         ids=self.instances.getAnnIds(imgIds=id)
 
         instance= self.instances.loadAnns(ids)
-        print(id)
-        print(ids)
-        print("instances",instance.get("category_id",-100))
+
+        #print(id)
+        #print(ids)
+        print("instances",instance[0].get("category_id",-100))
 
 
         target=torch.cat([self.tokenizer(
@@ -68,7 +69,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img,target,instance.get("category_id",-100)
+        return img,target,instance[0].get("category_id",-100)
 
 
 
