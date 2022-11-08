@@ -265,7 +265,7 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
         categories=batch[2]
-        accuracy = np.mean((categories == testpred).astype(np.float)) * 100.
+        accuracy = np.mean((categories == testpred)) * 100.
 
         self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
         #set linear layers to train mode
