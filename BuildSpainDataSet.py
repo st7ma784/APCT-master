@@ -39,7 +39,7 @@ class COCODataset(CocoCaptions):
         #print('Done')
         if instances is not None:
             from pycocotools.coco import COCO
-            instances=COCO(instances)
+            self.instances=COCO(instances)
         #print(self.ids)
     def __len__(self):
         return len(self.ids)
