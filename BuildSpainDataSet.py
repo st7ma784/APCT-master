@@ -47,7 +47,7 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', idx)
             return None
-        #Object detection target is self.coco.loadAnns(self.coco.getAnnIds(id))
+        category= self.coco.loadAnns(self.coco.getAnnIds(id))["category_id"]
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
@@ -58,7 +58,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img,target
+        return img,target,category
 
 
 

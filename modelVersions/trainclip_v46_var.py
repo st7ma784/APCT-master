@@ -223,7 +223,7 @@ class LightningCLIPModule(LightningModule):
         if dataloader_idx==0:
             self.model1_features = {}  #reset list of forward hooks
             self.model2_features = {}  #reset list of forward hooks
-            self.encode_image(batch[0]) #run through main mode
+            i=self.encode_image(batch[0]) #run through main mode
             self.model2.encode_image(batch[0])# to compare supervision model
             a=torch.stack(list(self.model1_features.values()))
             if not hasattr(self,'IMhsic_matrix0'):
@@ -241,7 +241,7 @@ class LightningCLIPModule(LightningModule):
             ##Now Do Text
             self.model1_features = {}  #reset list of forward hooks
             self.model2_features = {}  #reset list of forward hooks
-            self.encode_text(batch[1][:,0]) #run through main mode
+            t=self.encode_text(batch[1][:,0]) #run through main mode
             self.model2.encode_text(batch[1][:,0])# to compare supervision model
             a=torch.stack(list(self.model1_features.values()))
             if not hasattr(self,'CAPhsic_matrix0'):
@@ -255,17 +255,15 @@ class LightningCLIPModule(LightningModule):
             if not hasattr(self,'CAPhsic_matrix1'):
                 self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
             self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
-        else:
             #Just do the classification loss on Cifar100
-            input,target = batch
-            IMLogits=self.encode_image(input)
-            CAPLogits=self.encode_text(target[:,0])
-            #do a Linear regression on logits to target 
+            category = batch[2]
+            
+                   #do a Linear regression on logits to target 
             for i in range(10):
                 self.CAPoptimizer.zero_grad()
                 self.IMoptimizer.zero_grad()
-                loss2=self.criterion(self.CapLinear(CAPLogits),target)
-                loss = self.criterion(self.ImLinear(IMLogits),target)
+                loss2=self.criterion(self.CapLinear(t),category)
+                loss = self.criterion(self.ImLinear(i),category)
                 loss.backward()
                 loss2.backward()
                 self.CAPoptimizer.step()
