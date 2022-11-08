@@ -79,7 +79,7 @@ class LightningCLIPModule(LightningModule):
         print("done")
         self.ImLinear=nn.Linear(512,100)
         self.CapLinear=nn.Linear(512,100)
-        
+        self.CapLinear.to(self.device)
 
 
     def build_attention_mask(self):
@@ -208,12 +208,12 @@ class LightningCLIPModule(LightningModule):
         return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
 
     def on_validation_epoch_start(self):
-        self.train()
+        self.eval()
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
-        
+        self.eval()
         self.criterion = torch.nn.CrossEntropyLoss(size_average = False)
         self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
         self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
@@ -256,7 +256,8 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
         category = batch[2]
-        
+        i.requires_grad = True
+        t.requires_grad = True
                 #do a Linear regression on logits to target 
         for j in range(10):
             self.CAPoptimizer.zero_grad()
