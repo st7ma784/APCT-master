@@ -57,7 +57,7 @@ class COCODataset(CocoCaptions):
 
         #print(id)
         #print(ids)
-        print("instances",instance[0].get("category_id",-100))
+        #print("instances",instance[0].get("category_id",-100))
 
 
         target=torch.cat([self.tokenizer(
