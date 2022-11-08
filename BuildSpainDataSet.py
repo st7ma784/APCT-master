@@ -58,7 +58,10 @@ class COCODataset(CocoCaptions):
         #print(id)
         #print(ids)
         #print("instances",instance[0].get("category_id",-100))
-
+        try:
+            i=instance[0].get("category_id",-100)
+        except:
+            i=-100
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
