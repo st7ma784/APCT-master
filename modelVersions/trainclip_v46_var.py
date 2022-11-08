@@ -79,8 +79,7 @@ class LightningCLIPModule(LightningModule):
         print("done")
         self.ImLinear=nn.Linear(512,100)
         self.CapLinear=nn.Linear(512,100)
-        self.CapLinear.to(self.device)
-        self.criterion = torch.nn.CrossEntropyLoss(size_average = False)
+        self.criterion = torch.nn.CrossEntropyLoss(reduction='mean')
         self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
         self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
 
