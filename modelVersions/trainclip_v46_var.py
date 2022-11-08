@@ -256,21 +256,20 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
         category = batch[2]
-        i.requires_grad = True
-        t.requires_grad = True
+
                 #do a Linear regression on logits to target 
         for j in range(10):
-            self.IMoptimizer.zero_grad()
-            loss = self.criterion(self.ImLinear(i.to(self.device)),category)
+            loss = self.criterion(self.ImLinear(i),category)
             loss.backward()
             self.IMoptimizer.step()
-            self.CAPoptimizer.zero_grad()
 
-            loss2=self.criterion(self.CapLinear(t.to(self.device)),category)
+            loss2=self.criterion(self.CapLinear(t),category)
             loss2.backward()
 
             self.CAPoptimizer.step()
-        
+            self.IMoptimizer.zero_grad()
+            self.CAPoptimizer.zero_grad()
+
         self.log('VALIMCIFARloss',loss,prog_bar=True)
         self.log('VALCAPCIFARloss',loss2,prog_bar=True)
         #loss is how well the linear probe fits the target
