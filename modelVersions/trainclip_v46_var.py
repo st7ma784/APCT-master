@@ -255,9 +255,11 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
         category = batch[2]
-
+        i.requires_grad = True
+        t.requires_grad = True
                 #do a Linear regression on logits to target 
         for j in range(10):
+
             print(self.ImLinear(i).requires_grad)
             loss = self.criterion(self.ImLinear(i),category)
             print(loss.requires_grad)
