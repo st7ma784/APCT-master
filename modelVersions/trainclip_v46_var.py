@@ -258,7 +258,7 @@ class LightningCLIPModule(LightningModule):
 
                 #do a Linear regression on logits to target 
         for j in range(10):
-            print(self.ImLinear(j).requires_grad)
+            print(self.ImLinear(i).requires_grad)
             loss = self.criterion(self.ImLinear(i),category)
             print(loss.requires_grad)
             loss.backward()
