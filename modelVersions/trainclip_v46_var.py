@@ -215,12 +215,14 @@ class LightningCLIPModule(LightningModule):
         self.model2.eval()
         self._insert_hooks()
         self.eval()
-
-        features=torch.cat(self.features,dim=0).cpu().numpy()
-        labels=torch.cat(self.labels,dim=0).cpu().numpy()
         self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
-        self.classifier.fit(features, labels)
+
+        if self.features is not []:
+            features=torch.cat(self.features,dim=0).cpu().numpy()
+            labels=torch.cat(self.labels,dim=0).cpu().numpy()
+            self.classifier.fit(features, labels)
         self.Linearloss=0
+        
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
