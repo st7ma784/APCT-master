@@ -228,7 +228,10 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         i=self.encode_image(batch[0]) #run through main mode
-        testpred=self.classifier.predict(i.cpu().numpy())
+        try:
+            testpred=self.classifier.predict(i.cpu().numpy())
+        except:
+            testpred=np.zeros(i.shape[0])
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
         if not hasattr(self,'IMhsic_matrix0'):
