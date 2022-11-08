@@ -259,7 +259,7 @@ class LightningCLIPModule(LightningModule):
         category = batch[2]
         
                 #do a Linear regression on logits to target 
-        for i in range(10):
+        for j in range(10):
             self.CAPoptimizer.zero_grad()
             self.IMoptimizer.zero_grad()
             loss2=self.criterion(self.CapLinear(t),category)
