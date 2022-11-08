@@ -262,12 +262,12 @@ class LightningCLIPModule(LightningModule):
                 #do a Linear regression on logits to target 
         for j in range(10):
             self.IMoptimizer.zero_grad()
-            loss = self.criterion(self.ImLinear(i),category)
+            loss = self.criterion(self.ImLinear(i.to(self.device)),category)
             loss.backward()
             self.IMoptimizer.step()
             self.CAPoptimizer.zero_grad()
 
-            loss2=self.criterion(self.CapLinear(t),category)
+            loss2=self.criterion(self.CapLinear(t.to(self.device)),category)
             loss2.backward()
 
             self.CAPoptimizer.step()
