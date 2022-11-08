@@ -12,6 +12,7 @@ import clip
 from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
+from sklearn.linear_model import LogisticRegression
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -73,15 +74,13 @@ class LightningCLIPModule(LightningModule):
         self.transformer_width=transformer_width
         self.initialize_parameters()
         self.handles=[]
+        self.features=[]
+        
+        self.labels=[]
         self.model1_info={'Name':"SelfCLIP",}
         self.model2_info={'Name': "Stock CLIP",}
         self.naninfcount=0
         print("done")
-        self.ImLinear=nn.Linear(512,100)
-        self.CapLinear=nn.Linear(512,100)
-        self.criterion = torch.nn.CrossEntropyLoss(reduction='mean')
-        self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
-        self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
@@ -169,7 +168,8 @@ class LightningCLIPModule(LightningModule):
       
         labels=labels+self.lossim.ignore_index
         #self.labels=self.labels.to(self.device)
-        im,captions= batch[0],batch[1]
+        im,captions,cat= batch[0],batch[1],batch[2]
+        self.labels.append(cat.cpu())
         #print(captions.shape)#Batchx 5 Capions x Length
         imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         #print(logits1.shape ,labels.shape)
@@ -179,7 +179,7 @@ class LightningCLIPModule(LightningModule):
         loss4 = self.loss4(logits4, labels)
         loss5 = self.loss5(logits5, labels)
         lossim = self.lossim(imlogits, labels)
-
+        self.features.append(imlogits.cpu())
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
@@ -214,12 +214,19 @@ class LightningCLIPModule(LightningModule):
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
+        self.eval()
 
+        features=torch.cat(self.features,dim=0).cpu().numpy()
+        labels=torch.cat(self.labels,dim=0).cpu().numpy()
+        self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
+        self.classifier.fit(features, labels)
+        self.Linearloss=0
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         i=self.encode_image(batch[0]) #run through main mode
+        testpred=self.classifier.predict(i.cpu().numpy())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
         if not hasattr(self,'IMhsic_matrix0'):
@@ -252,36 +259,17 @@ class LightningCLIPModule(LightningModule):
             self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
-        category = batch[2]
-        i.requires_grad = True
-        t.requires_grad = True
+        categories=batch[2]
+        accuracy = np.mean((categories == testpred).astype(np.float)) * 100.
+
+        self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
         #set linear layers to train mode
-        self.criterion.train()
-        self.ImLinear.train()
-        self.CapLinear.train()
-        self.ImLinear.requires_grad_(True)
-        self.CapLinear.requires_grad_(True)
-                #do a Linear regression on logits to target 
-        for j in range(10):
 
-            print(self.ImLinear(i).requires_grad)
-            loss = self.criterion(self.ImLinear(i),category)
-            print(loss.requires_grad)
-            loss.backward()
-            self.IMoptimizer.step()
+    def on_validation_epoch_end(self):
 
-            loss2=self.criterion(self.CapLinear(t),category)
-            loss2.backward()
 
-            self.CAPoptimizer.step()
-            self.IMoptimizer.zero_grad()
-            self.CAPoptimizer.zero_grad()
-
-        self.log('VALIMCIFARloss',loss,prog_bar=True)
-        self.log('VALCAPCIFARloss',loss2,prog_bar=True)
-        #loss is how well the linear probe fits the target
-        return loss,loss2
-    def on_validation_epoch_end(self,):
+        # Evaluate using the logistic regression classifier
+        
         self.unfreeze()
         self.train()
         self.plot_results("IM","HSIC{}.jpg".format(self.current_epoch))
@@ -296,7 +284,9 @@ class LightningCLIPModule(LightningModule):
         del self.CapLinear, self.ImLinear
         del self.CAPoptimizer, self.IMoptimizer
         del self.criterion
-
+        self.features=[]
+        
+        self.labels=[]
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
             out=out[0]       
