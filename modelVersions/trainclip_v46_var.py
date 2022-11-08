@@ -258,6 +258,11 @@ class LightningCLIPModule(LightningModule):
         category = batch[2]
         i.requires_grad = True
         t.requires_grad = True
+        #set linear layers to train mode
+        self.criterion.train()
+        self.ImLinear.train()
+        self.CapLinear.train()
+        
                 #do a Linear regression on logits to target 
         for j in range(10):
 
