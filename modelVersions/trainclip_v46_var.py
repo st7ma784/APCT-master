@@ -80,7 +80,9 @@ class LightningCLIPModule(LightningModule):
         self.ImLinear=nn.Linear(512,100)
         self.CapLinear=nn.Linear(512,100)
         self.CapLinear.to(self.device)
-
+        self.criterion = torch.nn.CrossEntropyLoss(size_average = False)
+        self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
+        self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
@@ -214,10 +216,9 @@ class LightningCLIPModule(LightningModule):
         self.model2.eval()
         self._insert_hooks()
         self.eval()
-        self.criterion = torch.nn.CrossEntropyLoss(size_average = False)
-        self.IMoptimizer = torch.optim.SGD(self.ImLinear.parameters(), lr = 0.01)
-        self.CAPoptimizer = torch.optim.SGD(self.CapLinear.parameters(), lr = 0.01)
-
+       
+        self.ImLinear=nn.Linear(512,100).train()
+        self.CapLinear=nn.Linear(512,100).train()
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
@@ -260,14 +261,16 @@ class LightningCLIPModule(LightningModule):
         t.requires_grad = True
                 #do a Linear regression on logits to target 
         for j in range(10):
-            self.CAPoptimizer.zero_grad()
             self.IMoptimizer.zero_grad()
-            loss2=self.criterion(self.CapLinear(t),category)
             loss = self.criterion(self.ImLinear(i),category)
             loss.backward()
-            loss2.backward()
-            self.CAPoptimizer.step()
             self.IMoptimizer.step()
+            self.CAPoptimizer.zero_grad()
+
+            loss2=self.criterion(self.CapLinear(t),category)
+            loss2.backward()
+
+            self.CAPoptimizer.step()
         
         self.log('VALIMCIFARloss',loss,prog_bar=True)
         self.log('VALCAPCIFARloss',loss2,prog_bar=True)
