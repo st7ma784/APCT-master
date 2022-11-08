@@ -173,7 +173,7 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['train']:
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 if not os.path.exists(annfile):
                     print("Missing annotation file",annfile)
@@ -194,7 +194,7 @@ class COCODataModule(pl.LightningDataModule):
                 #print("BUILDING SPLIT : ",version)
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 #print("annfile:",annfile)
                 #print("dir:",dir)
@@ -207,7 +207,7 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['test']:
                 #print("BUILDING SPLIT : ",version)
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 
                 #print("annfile:",annfile)
