@@ -140,6 +140,7 @@ class LightningCLIPModule(LightningModule):
         
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
+        self.features.append(image_features.clone().detach().cpu())
         image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
         caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
@@ -179,7 +180,6 @@ class LightningCLIPModule(LightningModule):
         loss4 = self.loss4(logits4, labels)
         loss5 = self.loss5(logits5, labels)
         lossim = self.lossim(imlogits, labels)
-        self.features.append(imlogits.cpu())
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
