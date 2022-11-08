@@ -20,7 +20,7 @@ from transformers import AutoTokenizer,GPT2Tokenizer, CLIPTokenizer
 import time
 from pathlib import Path
 class COCODataset(CocoCaptions):
-    def __init__(self, root, annFile, tokenizer, *args, **kwargs):
+    def __init__(self, root, annFile, tokenizer, instances=None,*args, **kwargs):
         #print('Loading COCO dataset')
         self.tokenizer=tokenizer
         if os.getenv('ISHEC',False):
@@ -37,6 +37,9 @@ class COCODataset(CocoCaptions):
         #print('Error: annFile does not exist: {}'.format(annFile))
         super().__init__(root, annFile, *args, **kwargs)
         #print('Done')
+        if instances is not None:
+            from pycocotools.coco import COCO
+            instances=COCO(instances)
         #print(self.ids)
     def __len__(self):
         return len(self.ids)
@@ -47,7 +50,9 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', idx)
             return None
-        category= self.coco.loadAnns(self.coco.getAnnIds(id))["category_id"]
+        instance= self.instances.loadAnns(self.instances.getAnnIds(id))
+        print(instance)
+        category=instance['category_id']
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
@@ -168,13 +173,14 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['train']:
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
+                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 if not os.path.exists(annfile):
                     print("Missing annotation file",annfile)
                 
                 print("Loading train dataset",annfile)
                 #time.sleep(2)
-                dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T)
+                dset=COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer,instances=instancesfile, transform=self.T)
                 
                 #print("dset:",dset.__dir__())
 
@@ -188,10 +194,11 @@ class COCODataModule(pl.LightningDataModule):
                 #print("BUILDING SPLIT : ",version)
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
+                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 #print("annfile:",annfile)
                 #print("dir:",dir)
-                ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer, transform=self.T))
+                ValSets.append(COCODataset(root=dir, annFile=annfile, tokenizer=self.tokenizer,instances=instancesfile, transform=self.T))
             self.val = ConcatDataset(ValSets)
             # torch.save(self.train,"train.pt")
             # torch.save(self.val,"val.pt")    
@@ -200,11 +207,12 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['test']:
                 #print("BUILDING SPLIT : ",version)
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
+                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 
                 #print("annfile:",annfile)
                 #print("dir:",dir)
-                TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=self.tokenizer, transform=self.T))
+                TestSets.append(COCODataset(root=dir, annFile=annfile,tokenizer=self.tokenizer,instances=instancesfile, transform=self.T))
             self.test = ConcatDataset(TestSets)
 
 
