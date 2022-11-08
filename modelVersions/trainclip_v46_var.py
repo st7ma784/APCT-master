@@ -217,6 +217,8 @@ class LightningCLIPModule(LightningModule):
         self._insert_hooks()
         self.eval()
        
+        self.ImLinear.train()
+        self.CapLinear.train()
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
