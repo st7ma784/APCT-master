@@ -214,7 +214,7 @@ class LightningCLIPModule(LightningModule):
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
-       
+        self.criterion.train()
         self.ImLinear.train()
         self.CapLinear.train()
     def validation_step(self,batch,*args):
