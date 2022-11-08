@@ -54,7 +54,9 @@ class COCODataset(CocoCaptions):
         ids=self.instances.getAnnIds(imgIds=id)
 
         instance= self.instances.loadAnns(ids)
-        category=instance['category_id']
+        print(id)
+        print(ids)
+        print(instance)
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
