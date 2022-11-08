@@ -50,8 +50,10 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', idx)
             return None
-        instance= self.instances.loadAnns(self.instances.getAnnIds(id))
-        print(instance)
+        id=self.ids[idx]
+        ids=self.instances.getAnnIds(imgIds=id)
+
+        instance= self.instances.loadAnns(ids)
         category=instance['category_id']
 
         target=torch.cat([self.tokenizer(
