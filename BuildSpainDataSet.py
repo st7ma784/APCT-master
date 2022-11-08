@@ -56,7 +56,7 @@ class COCODataset(CocoCaptions):
         instance= self.instances.loadAnns(ids)
         print(id)
         print(ids)
-        print(instance)
+        print(instance["category_id"])
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
@@ -67,7 +67,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img,target,category
+        return img,target,instance["category_id"]
 
 
 
