@@ -1,9 +1,9 @@
 
-import pytorch_lightning
-from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
 import os,sys
 
 def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
+    import pytorch_lightning
+
     if config is not None:
         config=config.__dict__
         dir=config.get("dir",dir)
@@ -31,6 +31,10 @@ def train(config={
         "transformer_layers": 4,
         "JSE":False,
     },dir=None,devices=None,accelerator=None,Dataset=None,logtool=None):
+
+    import pytorch_lightning
+
+    from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
     if config["codeversion"]==4:
         from modelVersions.trainclip_v46_var import LightningCLIPModule
     elif config["codeversion"]==3:
@@ -98,13 +102,15 @@ def SlurmRun(trialconfig):
     ]
     comm="python"
     if str(os.getenv("HOSTNAME","localhost")).endswith("bede.dur.ac.uk"):
-        sub_commands.extend(['export CONDADIR=/nobackup/projects/bdlan05/$USER/miniconda',])
-        slurm_commands={"account":"bdlan05"}#,"partition":"gpu"} Leaving this part out to run on non-bede slurm
+        sub_commands.extend([
+        '#SBATCH --account=bdlan05',
+        'export CONDADIR=/nobackup/projects/bdlan05/$USER/miniconda',])
+        #slurm_commands={"account":"bdlan05"}#,"partition":"gpu"} Leaving this part out to run on non-bede slurm
         comm="python3"
     else: 
         sub_commands.extend(['export CONDADIR=/home/user/miniconda3',])
-        slurm_commands={}
-    sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
+        #slurm_commands={}
+    #sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
     sub_commands.extend([
         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
