@@ -39,7 +39,7 @@ class COCODataset(CocoCaptions):
         #print('Done')
         if instances is not None:
             from pycocotools.coco import COCO
-            instances=COCO(instances)
+            self.instances=COCO(instances)
         #print(self.ids)
     def __len__(self):
         return len(self.ids)
@@ -50,9 +50,18 @@ class COCODataset(CocoCaptions):
             print(e)
             print('Error loading image:', idx)
             return None
-        instance= self.instances.loadAnns(self.instances.getAnnIds(id))
-        print(instance)
-        category=instance['category_id']
+        id=self.ids[idx]
+        ids=self.instances.getAnnIds(imgIds=id)
+
+        instance= self.instances.loadAnns(ids)
+
+        #print(id)
+        #print(ids)
+        #print("instances",instance[0].get("category_id",-100))
+        try:
+            i=instance[0].get("category_id",-100)
+        except:
+            i=-100
 
         target=torch.cat([self.tokenizer(
                     sent,                      # Sentence to encode.
@@ -63,7 +72,7 @@ class COCODataset(CocoCaptions):
                     return_attention_mask = False,   # Construct attn. masks.
                     return_tensors = 'pt',     # Return pytorch tensors.
                 )['input_ids'] for sent in target[:5]],dim=0)
-        return img,target,category
+        return img,target,i
 
 
 
@@ -173,7 +182,7 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['train']:
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 if not os.path.exists(annfile):
                     print("Missing annotation file",annfile)
@@ -194,7 +203,7 @@ class COCODataModule(pl.LightningDataModule):
                 #print("BUILDING SPLIT : ",version)
                 
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 #print("annfile:",annfile)
                 #print("dir:",dir)
@@ -207,7 +216,7 @@ class COCODataModule(pl.LightningDataModule):
             for version in self.splits['test']:
                 #print("BUILDING SPLIT : ",version)
                 annfile=os.path.join(self.ann_dir,'{}_{}.json'.format('captions',version))
-                instancesfile=os.path.join(self.data_dir,'{}_{}.json'.format('instances',version))
+                instancesfile=os.path.join(self.ann_dir,'{}_{}.json'.format('instances',version))
                 dir=os.path.join(self.data_dir,version)
                 
                 #print("annfile:",annfile)
