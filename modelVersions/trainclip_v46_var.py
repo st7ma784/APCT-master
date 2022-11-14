@@ -114,9 +114,8 @@ class LightningCLIPModule(LightningModule):
         return x
 
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
-      
-        #shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],self.transformer_width)
-        #arrMean=torch.zeros((1,1,1,1,1,1,self.transformer_width),device=self.device)
+        #Calculate loss
+        #Loss=1 - sum((values - mean)^2)
         arrMean=torch.add(  torch.div( I,6).view( I.shape[0],1,1,1,1,1,-1),
                             torch.div(C1,6).view(1,C1.shape[0],1,1,1,1,-1)).add(
                 torch.add(  torch.div(C2,6).view(1,1,C2.shape[0],1,1,1,-1),
@@ -127,11 +126,11 @@ class LightningCLIPModule(LightningModule):
         #Normally, we'd do something like Val-mean. However, we do this the other way round for speed, and we can do this because abs(a-b)===abs(b-a)
 
         return 1- torch.sum(torch.sqrt(torch.add(torch.pow(torch.abs(torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1))),2),
-                  torch.pow(torch.abs(torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1))),2)).add(
-          torch.add(  torch.pow(torch.abs(torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1))),2),
-                      torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
-          torch.add(  torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
-                      torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1))),2)).add(
+                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1))),2),
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
+                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
   
         #print(Arr.shape)
         
