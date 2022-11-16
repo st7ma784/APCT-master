@@ -117,14 +117,8 @@ class LightningCLIPModule(LightningModule):
         return x
 
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
-<<<<<<< HEAD
         #Calculate loss
         #Loss=1 - sum((values - mean)^2)
-=======
-        #BxF 
-        #shapes=(I.shape[0],C1.shape[0],C2.shape[0],C3.shape[0],C4.shape[0],C5.shape[0],self.transformer_width)
-        #I, C1, C2, C3, C4, C5 = torch.sum([x.expand(*shapes) for x in (I, C1, C2, C3, C4, C5)],dim=-1)/6
->>>>>>> 44f43bfe27694af432650654225b8a7f7bbc9dea
         arrMean=torch.add(  torch.div( I,6).view( I.shape[0],1,1,1,1,1,-1),
                             torch.div(C1,6).view(1,C1.shape[0],1,1,1,1,-1)).add(
                 torch.add(  torch.div(C2,6).view(1,1,C2.shape[0],1,1,1,-1),
