@@ -128,13 +128,13 @@ class LightningCLIPModule(LightningModule):
         #Now we have the mean in the final dim shape (B,B,B,B,B,B,512)
         #Normally, we'd do something like Val-mean. However, we do this the other way round for speed, and we can do this because abs(a-b)===abs(b-a)
         #L2normm(Allvalues-mean)
-        return 1- torch.sum(torch.sqrt(torch.add(torch.pow(torch.abs(torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1))),2),
+        var= torch.sum(torch.sqrt(torch.add(torch.pow(torch.abs(torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1))),2),
                                                  torch.pow(torch.abs(torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1))),2)).add(
                                        torch.add(torch.pow(torch.abs(torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1))),2),
                                                  torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
                                        torch.add(torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
                                                  torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
-  
+        return 1-torch.mean(var)
         #print(Arr.shape)
         
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
