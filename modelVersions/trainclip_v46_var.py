@@ -134,7 +134,7 @@ class LightningCLIPModule(LightningModule):
                                                  torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
                                        torch.add(torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
                                                  torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
-        return 1-torch.mean(var)
+        return 1-var
         #print(Arr.shape)
         
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
@@ -154,6 +154,7 @@ class LightningCLIPModule(LightningModule):
 
         logs=self.logit_scale.exp()
         Loss=self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
+
         logits1=Loss.permute(1,2,3,4,5,0)
         logits2=Loss.permute(2,3,4,5,0,1)
         logits3=Loss.permute(3,4,5,0,1,2)
