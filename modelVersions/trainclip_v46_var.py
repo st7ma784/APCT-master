@@ -232,6 +232,8 @@ class LightningCLIPModule(LightningModule):
             testpred=self.classifier.predict(i.cpu().numpy())
         except:
             testpred=np.zeros(i.shape[0])
+        self.features.append(i.cpu())
+
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
         if not hasattr(self,'IMhsic_matrix0'):
@@ -265,6 +267,7 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
         categories=batch[2]
+        self.labels.append(categories)
         accuracy = np.mean((categories == testpred)) * 100.
 
         self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
