@@ -218,7 +218,7 @@ class LightningCLIPModule(LightningModule):
         self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
        
         if len(self.features)>0:
-            features=torch.nan_to_num(torch.cat(self.features,dim=0).cpu().numpy())
+            features=torch.nan_to_num(torch.cat(self.features,dim=0)).cpu().numpy()
             labels=torch.cat(self.labels,dim=0).cpu().numpy()
             self.classifier.fit(features, labels)
         self.Linearloss=0
