@@ -166,7 +166,7 @@ class LightningCLIPModule(LightningModule):
         caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
         logs=self.logit_scale.exp()
-        Loss=self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
+        Loss=self.calculate_loss2(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
 
         logits1=Loss.permute(1,2,3,4,5,0)
         logits2=Loss.permute(2,3,4,5,0,1)
