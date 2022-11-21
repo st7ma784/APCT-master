@@ -79,6 +79,7 @@ class COCODataset(CocoCaptions):
 
 
 # Dataset
+os.environ["TOKENIZERS_PARALLELISM"]='true'
 
 class COCODataModule(pl.LightningDataModule):
 
