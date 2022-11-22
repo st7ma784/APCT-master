@@ -8,7 +8,7 @@ class parser(HyperOptArgumentParser):
         self.add_argument("--dir",default="/nobackup/projects/bdlan05/smander3/data",type=str)
         self.add_argument("--log_path",default="/nobackup/projects/bdlan05/smander3/logs/",type=str)
         self.opt_list("--learning_rate", default=0.00001, type=float, options=[1e-3,1e-5, 1e-4,], tunable=True)
-        self.opt_list("--batch_size", default=11, type=int, options=[6,10,14], tunable=True)
+        self.opt_list("--batch_size", default=10, type=int, options=[6,10,14], tunable=True)
         self.opt_list("--JSE", default=0, type=int, options=[0], tunable=True)
         self.opt_list("--precision", default=16, options=[16], tunable=False)
         self.opt_list("--codeversion", default=5, type=int, options=[5], tunable=False)

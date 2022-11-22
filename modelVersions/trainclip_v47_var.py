@@ -137,20 +137,19 @@ class LightningCLIPModule(LightningModule):
         return 1-var
         #print(Arr.shape)
     def calculate_loss2( self, I, C1, C2, C3, C4, C5):
-        y=  torch.add(  I.view( I.shape[0],1,1,1,1,1,-1),
-                        C1.view(1,C1.shape[0],1,1,1,1,-1)).add(
-            torch.add(  C2.view(1,1,C2.shape[0],1,1,1,-1),
-                        C3.view(1,1,1,C3.shape[0],1,1,-1)).add(
-            torch.add(  C4.view(1,1,1,1,C4.shape[0],1,-1),
-                        C5.view(1,1,1,1,1,C5.shape[0],-1))))
-        Var=torch.add(  torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
-                        torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1)).add(
-            torch.add(  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
-                        torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1)).add(
-            torch.add(  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
-                        torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1))))
-        Var=torch.sub(Var,torch.pow(y,2),alpha=1/6)
-        return torch.sum(torch.sqrt(torch.abs(Var)),dim=-1)
+        return 1-torch.sum(torch.sqrt(torch.sub(torch.add(  torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+                                                        torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1)).add(
+                                            torch.add(  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
+                                                        torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1)).add(
+                                            torch.add(  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
+                                                        torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)))),
+                                            torch.pow(torch.add(  I.view( I.shape[0],1,1,1,1,1,-1),
+                                                                    C1.view(1,C1.shape[0],1,1,1,1,-1)).add(
+                                                        torch.add(  C2.view(1,1,C2.shape[0],1,1,1,-1),
+                                                                    C3.view(1,1,1,C3.shape[0],1,1,-1)).add(
+                                                        torch.add(  C4.view(1,1,1,1,C4.shape[0],1,-1),
+                                                                    C5.view(1,1,1,1,1,C5.shape[0],-1)))),2),alpha=1/6)),dim=-1)
+                                            
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         self.features.append(image_features.clone().detach().cpu())
@@ -169,31 +168,24 @@ class LightningCLIPModule(LightningModule):
         logs=self.logit_scale.exp()
         Loss=self.calculate_loss2(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
 
-        logits1=Loss.permute(1,2,3,4,5,0)
-        logits2=Loss.permute(2,3,4,5,0,1)
-        logits3=Loss.permute(3,4,5,0,1,2)
-        logits4=Loss.permute(4,5,0,1,2,3)
-        logits5=Loss.permute(5,0,1,2,3,4)
-
-        return Loss,logits1,logits2,logits3,logits4,logits5
+        return Loss
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
         labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index))))
-      
         labels=labels+self.lossim.ignore_index
-        #self.labels=self.labels.to(self.device)
-        im,captions,cat= batch[0],batch[1],batch[2]
-        self.labels.append(cat.cpu())
-        #print(captions.shape)#Batchx 5 Capions x Length
-        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        #print(logits1.shape ,labels.shape)
-        loss1 = self.loss1(logits1, labels)
-        loss2 = self.loss2(logits2, labels)
-        loss3 = self.loss3(logits3, labels)
-        loss4 = self.loss4(logits4, labels)
-        loss5 = self.loss5(logits5, labels)
-        lossim = self.lossim(imlogits, labels)
+        
+        im,captions= batch[0],batch[1]
+        
+        logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+        
+        lossim = self.lossim(logits, labels)
+
+        loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
+        loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
+        loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
+        loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
+        loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
         loss = lossim+loss1+loss2+loss3+loss4+loss5
         loss=loss/6
         loss = loss.mean()
@@ -230,11 +222,15 @@ class LightningCLIPModule(LightningModule):
         self._insert_hooks()
         self.eval()
         self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
-       
+        
         if len(self.features)>0:
+            #When I've collected enough features, I train the classifier
             features=torch.nan_to_num(torch.cat(self.features,dim=0)).cpu().numpy()
             labels=torch.cat(self.labels,dim=0).cpu().numpy()
             self.classifier.fit(features, labels)
+            #now restart collection.
+            self.labels=[]
+            self.features=[]
         self.Linearloss=0
         
     def validation_step(self,batch,*args):
@@ -247,6 +243,11 @@ class LightningCLIPModule(LightningModule):
         except:
             testpred=np.zeros(i.shape[0])
         self.features.append(i.cpu())
+        self.labels.append(batch[2].cpu())
+        accuracy = np.mean((batch[2] == testpred)) * 100.
+
+        self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        #set linear layers to train mode
 
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
@@ -280,12 +281,8 @@ class LightningCLIPModule(LightningModule):
             self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
-        categories=batch[2]
-        self.labels.append(categories)
-        accuracy = np.mean((categories == testpred)) * 100.
-
-        self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        #set linear layers to train mode
+       
+      
 
     def on_validation_epoch_end(self):
 
@@ -304,9 +301,7 @@ class LightningCLIPModule(LightningModule):
         del self.IMhsic_matrix0,self.IMhsic_matrix1,self.IMhsic_matrix2
         del self.CAPhsic_matrix1,self.CAPhsic_matrix2,self.CAPhsic_matrix0
         del self.classifier
-        self.features=[]
         
-        self.labels=[]
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
             out=out[0]       
