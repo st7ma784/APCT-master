@@ -221,7 +221,7 @@ class LightningCLIPModule(LightningModule):
         self.model2.eval()
         self._insert_hooks()
         self.eval()
-        if not self.hasattr(self,"classifier"):
+        if not hasattr(self,"classifier"):
             self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
         
         if len(self.features)>0:
