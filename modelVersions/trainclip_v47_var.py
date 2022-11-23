@@ -221,7 +221,8 @@ class LightningCLIPModule(LightningModule):
         self.model2.eval()
         self._insert_hooks()
         self.eval()
-        self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
+        if not self.hasattr(self,"classifier"):
+            self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
         
         if len(self.features)>0:
             #When I've collected enough features, I train the classifier
@@ -300,7 +301,6 @@ class LightningCLIPModule(LightningModule):
         del self.model2
         del self.IMhsic_matrix0,self.IMhsic_matrix1,self.IMhsic_matrix2
         del self.CAPhsic_matrix1,self.CAPhsic_matrix2,self.CAPhsic_matrix0
-        del self.classifier
         
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
