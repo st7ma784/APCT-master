@@ -292,9 +292,11 @@ class LightningCLIPModule(LightningModule):
         
         self.unfreeze()
         self.train()
-        self.plot_results("IM","HSIC{}.jpg".format(self.current_epoch))
+        self.plot_results("IM","IMHSIC{}.jpg".format(self.current_epoch))
+        self.plot_results("CAP","CAPHSIC{}.jpg".format(self.current_epoch))
         if self.logger is not None:
-            self.logger.log_image(key="HSIC{}".format(self.current_epoch), images=["HSIC{}.jpg".format(self.current_epoch)])
+            self.logger.log_image(key="IMHSIC{}".format(self.current_epoch), images=["IMHSIC{}.jpg".format(self.current_epoch)])        
+            self.logger.log_image(key="CAPHSIC{}".format(self.current_epoch), images=["CAPHSIC{}.jpg".format(self.current_epoch)])
         for handle in self.handles:
             handle.remove()
         print(self.naninfcount)
