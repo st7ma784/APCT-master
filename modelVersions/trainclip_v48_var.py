@@ -168,7 +168,7 @@ class LightningCLIPModule(LightningModule):
                                                       torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)))),dim=-1)
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
-        self.features.append(image_features.clone().detach().cpu())
+        #self.features.append(image_features.clone().detach().cpu())
         image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
         caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
@@ -243,6 +243,8 @@ class LightningCLIPModule(LightningModule):
             #When I've collected enough features, I train the classifier
             features=torch.nan_to_num(torch.cat(self.features,dim=0)).cpu().numpy()
             labels=torch.cat(self.labels,dim=0).cpu().numpy()
+            print(features.shape)
+            print(labels.shape)
             self.classifier.fit(features, labels)
             #now restart collection.
             self.labels=[]
