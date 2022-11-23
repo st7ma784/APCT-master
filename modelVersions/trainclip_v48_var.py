@@ -178,10 +178,9 @@ class LightningCLIPModule(LightningModule):
         caption_features5=self.encode_text(captions5)
         caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
-        logs=self.logit_scale.exp()
-        Loss=self.calculate_loss2(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
+        return self.calculate_loss3(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
 
-        return Loss
+        
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
