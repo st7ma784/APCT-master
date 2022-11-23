@@ -149,7 +149,20 @@ class LightningCLIPModule(LightningModule):
                                                                     C3.view(1,1,1,C3.shape[0],1,1,-1)).add(
                                                         torch.add(  C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                                     C5.view(1,1,1,1,1,C5.shape[0],-1)))),2),alpha=1/6)),dim=-1)
-                                            
+    def calculate_loss3( self, I, C1, C2, C3, C4, C5):
+            
+        return 1-torch.sum(torch.sqrt(torch.sub(torch.add(  torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+                                                        torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1)).add(
+                                            torch.add(  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
+                                                        torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1))),
+                                            torch.pow(torch.add(  I.view( I.shape[0],1,1,1,1,1,-1),
+                                                                    C1.view(1,C1.shape[0],1,1,1,1,-1)).add(
+                                                        torch.add(  C2.view(1,1,C2.shape[0],1,1,1,-1),
+                                                                    C3.view(1,1,1,C3.shape[0],1,1,-1)).add(
+                                                        torch.add(  C4.view(1,1,1,1,C4.shape[0],1,-1),
+                                                                    C5.view(1,1,1,1,1,C5.shape[0],-1)))),2),alpha=1/6).add(
+                                            torch.add(  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
+                                                        torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)))),dim=-1)
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         self.features.append(image_features.clone().detach().cpu())
@@ -165,10 +178,9 @@ class LightningCLIPModule(LightningModule):
         caption_features5=self.encode_text(captions5)
         caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
-        logs=self.logit_scale.exp()
-        Loss=self.calculate_loss2(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*logs
+        return self.calculate_loss3(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
 
-        return Loss
+        
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
