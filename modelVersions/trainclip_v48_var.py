@@ -255,17 +255,18 @@ class LightningCLIPModule(LightningModule):
         
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        i=self.encode_image(batch[0]) #run through main mode
-        try:
-            testpred=self.classifier.predict(i.cpu().numpy())
-        except:
-            testpred=np.zeros(i.shape[0])
-        self.features.append(i.cpu())
-        self.labels.append(batch[2].cpu())
-        accuracy = np.mean((batch[2] == testpred)) * 100.
+        i=self.encode_image(batch[0]).cpu() #run through main mode
+        if self.current_epoch>0:
+            testpred=self.classifier.predict(i.numpy(),)
+            accuracy = np.mean((batch[2] == testpred)) * 100.
 
-        self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
+            self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
+       
+        self.features.append(i)
+        self.labels.append(batch[2].cpu())
         #set linear layers to train mode
+        print(len(self.features))
+        print(len(self.labels))
 
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
