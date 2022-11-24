@@ -245,7 +245,7 @@ class LightningCLIPModule(LightningModule):
             labels=torch.cat(self.labels,dim=0).cpu().numpy()
             print(features.shape)
             print(labels.shape)
-            self.classifier.fit(features, labels)
+            #self.classifier.fit(features, labels)
             #now restart collection.
             self.labels=[]
             self.features=[]
