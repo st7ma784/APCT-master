@@ -152,20 +152,18 @@ class LightningCLIPModule(LightningModule):
                                                         C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                         C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6)),dim=-1)
     def calculate_loss3( self, I, C1, C2, C3, C4, C5):
-            
-         
-        return 1-torch.sum(torch.sqrt(torch.sub(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
-                                                            torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
-                                                            torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
-                                                            torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1)]),
-                                          torch.pow(reduce(torch.add,[I.view( I.shape[0],1,1,1,1,1,-1),
-                                                                      C1.view(1,C1.shape[0],1,1,1,1,-1),
-                                                                      C2.view(1,1,C2.shape[0],1,1,1,-1),
-                                                                      C3.view(1,1,1,C3.shape[0],1,1,-1),
-                                                                      C4.view(1,1,1,1,C4.shape[0],1,-1),
-                                                                      C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6).add(
-                                          torch.add(  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
-                                                      torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)))),dim=-1)
+        return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+                                                  torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
+                                                  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
+                                                  torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1),
+                                                  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
+                                                  torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)]).sub_(
+                            torch.pow(reduce(torch.add,[I.view( I.shape[0],1,1,1,1,1,-1),
+                                                        C1.view(1,C1.shape[0],1,1,1,1,-1),
+                                                        C2.view(1,1,C2.shape[0],1,1,1,-1),
+                                                        C3.view(1,1,1,C3.shape[0],1,1,-1),
+                                                        C4.view(1,1,1,1,C4.shape[0],1,-1),
+                                                        C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6),dim=-1))
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
@@ -181,7 +179,7 @@ class LightningCLIPModule(LightningModule):
         caption_features5=self.encode_text(captions5)
         caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
-        return self.calculate_loss2(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
+        return self.calculate_loss3(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
 
         
 
@@ -243,9 +241,9 @@ class LightningCLIPModule(LightningModule):
             #When I've collected enough features, I train the classifier
             features=torch.nan_to_num(torch.cat(self.features,dim=0)).cpu().numpy()
             labels=torch.cat(self.labels,dim=0).cpu().numpy()
-            print(features.shape)
-            print(labels.shape)
-            #self.classifier.fit(features, labels)
+            # print(features.shape)
+            # print(labels.shape)
+            self.classifier.fit(features, labels)
             #now restart collection.
             self.labels=[]
             self.features=[]
@@ -257,7 +255,7 @@ class LightningCLIPModule(LightningModule):
         self.model2_features = {}  #reset list of forward hooks
         i=self.encode_image(batch[0]).cpu() #run through main mode
         if self.current_epoch>0:
-            testpred=self.classifier.predict(i.numpy(),)
+            testpred=self.classifier.predict(i.numpy())
             accuracy = np.mean((batch[2] == testpred)) * 100.
 
             self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
@@ -265,8 +263,8 @@ class LightningCLIPModule(LightningModule):
         self.features.append(i)
         self.labels.append(batch[2].cpu())
         #set linear layers to train mode
-        print(len(self.features))
-        print(len(self.labels))
+        #print(len(self.features))
+        #print(len(self.labels))
 
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.stack(list(self.model1_features.values()))
