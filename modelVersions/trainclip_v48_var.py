@@ -7,9 +7,9 @@ import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
-from functools import partial
+from functools import partial,reduce
 import clip
-from functools import reduce
+from operator import iadd
 
 from warnings import warn
 import matplotlib.pyplot as plt
@@ -167,17 +167,17 @@ class LightningCLIPModule(LightningModule):
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
-        image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
+        #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
-        caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
+        #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
         caption_features2=self.encode_text(captions2)
-        caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
+        #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
         caption_features3=self.encode_text(captions3)
-        caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
+        #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
         caption_features4=self.encode_text(captions4)
-        caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
+        #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
         caption_features5=self.encode_text(captions5)
-        caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
+        #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
         return self.calculate_loss3(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
 
@@ -247,8 +247,7 @@ class LightningCLIPModule(LightningModule):
             #now restart collection.
             self.labels=[]
             self.features=[]
-        self.Linearloss=0
-        
+        self.Linearloss=[]
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
@@ -256,9 +255,8 @@ class LightningCLIPModule(LightningModule):
         i=self.encode_image(batch[0]).cpu() #run through main mode
         if self.current_epoch>0:
             testpred=self.classifier.predict(i.numpy())
-            accuracy = np.mean((batch[2] == testpred)) * 100.
-
-            self.log("liner_acc", accuracy, prog_bar=True,enable_graph=False, rank_zero_only=True)
+            self.Linearloss.append(np.mean(batch[2] == testpred))
+            self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
        
         self.features.append(i)
         self.labels.append(batch[2].cpu())
@@ -305,7 +303,9 @@ class LightningCLIPModule(LightningModule):
 
 
         # Evaluate using the logistic regression classifier
-        
+        if self.current_epoch>0:
+            self.log("liner_acc",np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
+
         self.unfreeze()
         self.train()
         self.plot_results("IM","IMHSIC{}.jpg".format(self.current_epoch))
