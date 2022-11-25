@@ -197,7 +197,6 @@ if __name__ == '__main__':
             slurm_cmd_script_path = os.path.join(defaultConfig.get("dir","."),"slurm_cmdtrial{}.sh".format(i))
             with open(slurm_cmd_script_path, "w") as f:
               f.write(command)
-        for i in range(0,NumTrials):
             print('\nlaunching exp...')
             result = call('{} {}'.format("sbatch", slurm_cmd_script_path), shell=True)
             if result == 0:
