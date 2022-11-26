@@ -255,7 +255,7 @@ class LightningCLIPModule(LightningModule):
         i=self.encode_image(batch[0]).cpu() #run through main mode
         if self.current_epoch>0:
             testpred=self.classifier.predict(i.numpy())
-            self.Linearloss.append(np.mean(batch[2] == testpred))
+            self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
             self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
        
         self.features.append(i)
@@ -304,7 +304,7 @@ class LightningCLIPModule(LightningModule):
 
         # Evaluate using the logistic regression classifier
         if self.current_epoch>0:
-            self.log("liner_acc",np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
+            self.log("liner_acc",np.sum(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
 
         self.unfreeze()
         self.train()
