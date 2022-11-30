@@ -116,6 +116,7 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
+    @torch.jit.script
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
         #Calculate loss
         #Loss=1 - sum((values - mean)^2)
@@ -136,6 +137,7 @@ class LightningCLIPModule(LightningModule):
                                                  torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
         return 1-var
         #print(Arr.shape)
+    @torch.jit.script
     def calculate_loss2( I, C1, C2, C3, C4, C5):
         y=      torch.add(  I.view( I.shape[0],1,1,1,1,1,-1),
                     C1.view(1,C1.shape[0],1,1,1,1,-1)).add(

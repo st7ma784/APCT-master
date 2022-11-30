@@ -16,6 +16,7 @@ cd $global_storage/6DIMCOCO
 git pull
 export WANDB_SILENT=true
 export WANDB_RESUME=auto
+export HF_DATASETS_CACHE=/data/hpc
 export WANDB_CONSOLE='off'
 export PL_TORCH_DISTRIBUTED_BACKEND=gloo
 export ISHEC=1

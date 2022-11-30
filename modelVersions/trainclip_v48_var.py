@@ -88,7 +88,7 @@ class LightningCLIPModule(LightningModule):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
         mask = torch.empty(self.context_length, self.context_length)
-        mask.fill_(float("-inf"))
+        mask.fill_(float(-100))
         mask.triu_(1)  # zero out the lower diagonal
         return mask
   
@@ -100,7 +100,23 @@ class LightningCLIPModule(LightningModule):
         proj_std = (self.encoder.width ** -0.5) * ((2 * self.encoder.layers) ** -0.5)
         attn_std = self.encoder.width ** -0.5
         fc_std = (2 * self.encoder.width) ** -0.5
+        for _,layer in self.encode_image.named_modules():
+            if isinstance(layer, nn.ModuleList):
+                for block in layer:
 
+                    nn.init.normal_(block.weight, std=0.2)
+                    nn.init.zeros_(block.bias)
+            elif isinstance(layer, nn.Linear):
+                nn.init.normal_(layer.weight, std=fc_std)
+                nn.init.zeros_(layer.bias)
+        for _,layer in self.encoder.named_modules():
+            if isinstance(layer, nn.ModuleList):
+                for block in layer:
+                    nn.init.normal_(block.weight, std=0.2)
+                    nn.init.zeros_(block.bias)
+            elif isinstance(layer, nn.Linear):
+                nn.init.normal_(layer.weight, std=fc_std)
+                nn.init.zeros_(layer.bias)
         for block in self.encoder.resblocks:
             nn.init.normal_(block.attn.in_proj_weight, std=attn_std)
             nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
@@ -108,6 +124,7 @@ class LightningCLIPModule(LightningModule):
             nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
 
         nn.init.normal_(self.text_projection, std=self.encoder.width ** -0.5)
+
     def encode_text(self, text):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
         x = x + self.positional_embedding.type(self.dtype)
@@ -138,7 +155,9 @@ class LightningCLIPModule(LightningModule):
                                                  torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
         return 1-var
         #print(Arr.shape)
+    
     def calculate_loss2( self, I, C1, C2, C3, C4, C5):
+    
         return 1-torch.sum(torch.sqrt(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                   torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
                                                   torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
@@ -151,7 +170,8 @@ class LightningCLIPModule(LightningModule):
                                                         C3.view(1,1,1,C3.shape[0],1,1,-1),
                                                         C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                         C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6)),dim=-1)
-    def calculate_loss3( self, I, C1, C2, C3, C4, C5):
+    def calculate_loss3(self, I, C1, C2, C3, C4, C5):
+  
         return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                   torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
                                                   torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
@@ -164,6 +184,7 @@ class LightningCLIPModule(LightningModule):
                                                         C3.view(1,1,1,C3.shape[0],1,1,-1),
                                                         C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                         C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6),dim=-1))
+    # @torch.jit.script
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
@@ -217,15 +238,20 @@ class LightningCLIPModule(LightningModule):
     def batch_HSIC2(self,K):
         a=torch.sum(K,dim=-1)
         b=torch.sum(K,dim=-2)
-        c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[1] - 1),torch.sum(a*b,dim=1),alpha=2)
-        output=torch.add(torch.einsum('a...->a',torch.pow(K,2)),torch.div(c,(K.shape[1] - 2)))
-        return output
+        c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[-2] - 1),torch.sum(a*b,dim=1),alpha=2)
+        #print(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1))
+        output=torch.add(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1),torch.div(c,(K.shape[1] - 2)))
+        return torch.div(output,(K.shape[-2]*(K.shape[-2] - 3)))
                 
     def batch_HSIC3(self,K,L):
-        a=torch.sum(L,dim=-1)
-        b=torch.sum(K,dim=-2)
-        c=torch.sub(torch.sum(b,dim=-1)*torch.sum(a,dim=-1)/(K.shape[1] - 1),torch.sum(b*a,dim=1),alpha=2)
-        return torch.add(torch.einsum('abc->a',K*L),torch.div(c,(K.shape[1] - 2)))
+        K=K.unsqueeze(1) # 46,1,B,B
+        L=L.unsqueeze(0) # 1,46, B,B
+        a=torch.sum(L,dim=-1) #1,46,10
+        b=torch.sum(K,dim=-2) #46,1,10
+        #print(a.shape,b.shape)
+        c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1)).div((K.shape[1] - 1)),torch.sum(torch.mul(b,a),dim=-1),alpha=2) #[46,46]- [46,46] =[46,46]
+        #print(c.shape) # expect LayerK, LayerL, 
+        return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
 
     def on_validation_epoch_start(self):
         
@@ -233,6 +259,13 @@ class LightningCLIPModule(LightningModule):
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
         self._insert_hooks()
+        self.IMhsic_matrix0=torch.zeros([],device=self.device)
+        self.IMhsic_matrix1=torch.zeros([],device=self.device)
+        self.IMhsic_matrix2=torch.zeros([],device=self.device)
+        self.CAPhsic_matrix0=torch.zeros([],device=self.device)
+        self.CAPhsic_matrix1=torch.zeros([],device=self.device)
+        self.CAPhsic_matrix2=torch.zeros([],device=self.device)
+        
         self.eval()
         if not hasattr(self,"classifier"):
             self.classifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
@@ -260,40 +293,29 @@ class LightningCLIPModule(LightningModule):
        
         self.features.append(i)
         self.labels.append(batch[2].cpu())
-        #set linear layers to train mode
-        #print(len(self.features))
-        #print(len(self.labels))
-
         self.model2.encode_image(batch[0])# to compare supervision model
-        a=torch.stack(list(self.model1_features.values()))
-        if not hasattr(self,'IMhsic_matrix0'):
-            self.IMhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,self.batch_HSIC2(a)) 
-        a=torch.stack(list(self.model2_features.values()))
-        if not hasattr(self,'IMhsic_matrix2'):
-            self.IMhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
+      
         self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,self.batch_HSIC2(a))
-        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
-        if not hasattr(self,'IMhsic_matrix1'):
-            self.IMhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
 
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        t=self.encode_text(batch[1][:,0]) #run through main mode
+        self.encode_text(batch[1][:,0]) #run through main mode
         self.model2.encode_text(batch[1][:,0])# to compare supervision model
-        a=torch.stack(list(self.model1_features.values()))
-        if not hasattr(self,'CAPhsic_matrix0'):
-            self.CAPhsic_matrix0=torch.zeros((a.shape[0]),device=self.device)
+        a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 
-        a=torch.stack(list(self.model2_features.values()))
-        if not hasattr(self,'CAPhsic_matrix2'):
-            self.CAPhsic_matrix2=torch.zeros((a.shape[0]),device=self.device)
+        a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
         self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,self.batch_HSIC2(a))
-        joint_HSIC=torch.stack(list(map(lambda X: self.batch_HSIC3(a,X),list(self.model1_features.values()))))
-        if not hasattr(self,'CAPhsic_matrix1'):
-            self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
+        #joint=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
+        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
+        #print(joint_HSIC)
+        # if not hasattr(self,'CAPhsic_matrix1'):
+        #     self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
@@ -317,26 +339,23 @@ class LightningCLIPModule(LightningModule):
             handle.remove()
         print(self.naninfcount)
         del self.model2
-        del self.IMhsic_matrix0,self.IMhsic_matrix1,self.IMhsic_matrix2
-        del self.CAPhsic_matrix1,self.CAPhsic_matrix2,self.CAPhsic_matrix0
-        
+     
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
             out=out[0]       
             # print("permuted")
         if out.shape[0] == self.hparams.train_batch_size:
             self.__store(out,name,model,layer)
-        
+            
         elif out.shape[1] == self.hparams.train_batch_size:
             self.__store(out.permute(1,0,*torch.arange(len(out.shape)-2)+2),name,model,layer)
-
+        # else:
+        #     self.__store(torch.zeros((self.hparams.train_batch_size,out.shape[1]),device=self.device),name,model,layer)
     def __store(self,out,name, model,layer):
         X = out.flatten(1)
-        X= (X @ X.t()).fill_diagonal_(0)
+        X= torch.nan_to_num((X @ X.t()).fill_diagonal_(0))
         if (torch.isnan(X).any() or torch.isinf(X).any()):
             self.naninfcount+=1
-            if self.current_epoch==0 and hasattr(layer, 'weight'):
-                nn.init.normal_(layer.weight, std=0.02)
         if model == "model1":
             #if name already exists in dictionary, change name to name+1
             while name in self.model1_features:
@@ -352,13 +371,15 @@ class LightningCLIPModule(LightningModule):
             raise RuntimeError("Unknown model name for _log_layer.")
     def _insert_hooks(self):
         self.handles=[]
-        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encode_image.named_modules()])
-        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encoder.named_modules()])
-        a=len(self.handles)
-        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.visual.named_modules()])
+        # if layer weight is has self.hparams.train_batch_size in shape or layer.weight is None])
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encode_image.named_modules()]) 
+        
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model1", name)) for name, layer in self.encoder.named_modules() ]) 
+        
+        self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.visual.named_modules()]) 
+        
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
-        b=len(self.handles)-a
-        return a,b
+        
   
     def export(self):
         """
@@ -381,16 +402,24 @@ class LightningCLIPModule(LightningModule):
         title =model_name+" HSIC" if title is None else model_name+title
         fig, ax = plt.subplots()
         if model_name=="IM":
+            print(self.IMhsic_matrix0.shape) #46
+            print(self.IMhsic_matrix2.shape) # 110
             t=self.IMhsic_matrix0.unsqueeze(1)*self.IMhsic_matrix2.unsqueeze(0)
         #print(torch.sum(torch.abs(t)==t))
             r=torch.sqrt(torch.abs(t))
             r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
-            hsic_matrix = self.IMhsic_matrix1 / r
+            print("im1",self.IMhsic_matrix1.shape)
+            print("r", r.shape)
+            hsic_matrix = torch.div(self.IMhsic_matrix1.squeeze().t(), r)
+            print("hsic",hsic_matrix)
         else:
+            print(self.CAPhsic_matrix0.shape,self.CAPhsic_matrix2.shape)
             t=self.CAPhsic_matrix0.unsqueeze(1)*self.CAPhsic_matrix2.unsqueeze(0)
             r=torch.sqrt(torch.abs(t))
             r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
-            hsic_matrix = self.CAPhsic_matrix1 / r
+            print("cap1", self.CAPhsic_matrix1.shape)
+            print("r",r.shape)
+            hsic_matrix = torch.div(self.CAPhsic_matrix1.squeeze().t() , r)
         hsic_matrix=torch.nan_to_num(hsic_matrix,nan=0)
         im = ax.imshow(hsic_matrix.cpu(), origin='lower', cmap='magma')
         ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)

@@ -136,6 +136,7 @@ class LightningCLIPModule(LightningModule):
                                                  torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
         return 1-var
         #print(Arr.shape)
+    @torch.jit.script
     def calculate_loss2( self, I, C1, C2, C3, C4, C5):
         return 1-torch.sum(torch.sqrt(torch.sub(torch.add(  torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                         torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1)).add(
@@ -149,6 +150,8 @@ class LightningCLIPModule(LightningModule):
                                                                     C3.view(1,1,1,C3.shape[0],1,1,-1)).add(
                                                         torch.add(  C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                                     C5.view(1,1,1,1,1,C5.shape[0],-1)))),2),alpha=1/6)),dim=-1)
+
+    @torch.jit.script
     def calculate_loss3( self, I, C1, C2, C3, C4, C5):
             
         return 1-torch.sum(torch.sqrt(torch.sub(torch.add(  torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
@@ -163,6 +166,7 @@ class LightningCLIPModule(LightningModule):
                                                                     C5.view(1,1,1,1,1,C5.shape[0],-1)))),2),alpha=1/6).add(
                                             torch.add(  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
                                                         torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)))),dim=-1)
+    @torch.jit.script
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         self.features.append(image_features.clone().detach().cpu())
