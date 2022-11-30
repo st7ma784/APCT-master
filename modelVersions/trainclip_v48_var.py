@@ -249,7 +249,7 @@ class LightningCLIPModule(LightningModule):
         a=torch.sum(L,dim=-1) #1,46,10
         b=torch.sum(K,dim=-2) #46,1,10
         #print(a.shape,b.shape)
-        c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1)).div((K.shape[1] - 1)),torch.sum(torch.mul(b,a),dim=-1),alpha=2) #[46,46]- [46,46] =[46,46]
+        c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1)).div((K.shape[-2] - 1)),torch.sum(torch.mul(b,a),dim=-1),alpha=2) #[46,46]- [46,46] =[46,46]
         #print(c.shape) # expect LayerK, LayerL, 
         return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
 
