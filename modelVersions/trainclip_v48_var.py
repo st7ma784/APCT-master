@@ -104,15 +104,15 @@ class LightningCLIPModule(LightningModule):
             if isinstance(layer, nn.ModuleList):
                 for block in layer:
 
-                    nn.init.normal_(block.weight, std=0.2)
+                    nn.init.normal_(block.weight, std=1)
                     nn.init.zeros_(block.bias)
             elif isinstance(layer, nn.Linear):
-                nn.init.normal_(layer.weight, std=fc_std)
+                nn.init.normal_(layer.weight, std=1)
                 nn.init.zeros_(layer.bias)
         for _,layer in self.encoder.named_modules():
             if isinstance(layer, nn.ModuleList):
                 for block in layer:
-                    nn.init.normal_(block.weight, std=0.2)
+                    nn.init.normal_(block.weight, std=1)
                     nn.init.zeros_(block.bias)
             elif isinstance(layer, nn.Linear):
                 nn.init.normal_(layer.weight, std=fc_std)
