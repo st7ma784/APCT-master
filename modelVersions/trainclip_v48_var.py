@@ -299,7 +299,7 @@ class LightningCLIPModule(LightningModule):
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
         self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,self.batch_HSIC2(a))
-        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
+        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
 
         ##Now Do Text
@@ -312,7 +312,7 @@ class LightningCLIPModule(LightningModule):
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
         self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,self.batch_HSIC2(a))
         #joint=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
-        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
+        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
         #print(joint_HSIC)
         # if not hasattr(self,'CAPhsic_matrix1'):
         #     self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
