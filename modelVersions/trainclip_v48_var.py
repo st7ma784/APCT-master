@@ -88,7 +88,7 @@ class LightningCLIPModule(LightningModule):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
         mask = torch.empty(self.context_length, self.context_length)
-        mask.fill_(float(-100))
+        mask.fill_('-inf')
         mask.triu_(1)  # zero out the lower diagonal
         return mask
   
@@ -295,13 +295,12 @@ class LightningCLIPModule(LightningModule):
         self.labels.append(batch[2].cpu())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
-        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,self.batch_HSIC2(a)) 
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
-        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,self.batch_HSIC2(a))
-        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2))
+        joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))), nan=0.0,posinf=1,neginf=-2)
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
-
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
@@ -402,9 +401,9 @@ class LightningCLIPModule(LightningModule):
         title =model_name+" HSIC" if title is None else model_name+title
         fig, ax = plt.subplots()
         if model_name=="IM":
-            print(self.IMhsic_matrix0) #46
+            print(self.IMhsic_matrix0) #46 #Comes out inf on val step
             print(self.IMhsic_matrix2) # 110
-            t=self.IMhsic_matrix0.unsqueeze(1)*self.IMhsic_matrix2.unsqueeze(0)
+            t=self.IMhsic_matrix0.unsqueeze(1)*self.IMhsic_matrix2.unsqueeze(0) #46 x 110
         #print(torch.sum(torch.abs(t)==t))
             r=torch.sqrt(torch.abs(t))
             r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
