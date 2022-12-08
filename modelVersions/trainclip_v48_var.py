@@ -88,7 +88,7 @@ class LightningCLIPModule(LightningModule):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
         mask = torch.empty(self.context_length, self.context_length)
-        mask.fill_('-inf')
+        mask.fill_(float("-inf"))
         mask.triu_(1)  # zero out the lower diagonal
         return mask
   
