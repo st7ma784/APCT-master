@@ -236,13 +236,15 @@ class LightningCLIPModule(LightningModule):
         return [optimizer],[lr_schedulers]
 
     def batch_HSIC2(self,K):
+        #K is Layers x B x B
         a=torch.sum(K,dim=-1)
+        print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
         b=torch.sum(K,dim=-2)
         c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[-2] - 1),torch.sum(a*b,dim=1),alpha=2)
         #print(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1))
-        output=torch.add(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1),torch.div(c,(K.shape[1] - 2)))
+        output=torch.add(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2)))
         return torch.div(output,(K.shape[-2]*(K.shape[-2] - 3)))
-                
+        #check for why pos infs... 
     def batch_HSIC3(self,K,L):
         K=K.unsqueeze(1) # 46,1,B,B
         L=L.unsqueeze(0) # 1,46, B,B
@@ -252,7 +254,7 @@ class LightningCLIPModule(LightningModule):
         c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1)).div((K.shape[-2] - 1)),torch.sum(torch.mul(b,a),dim=-1),alpha=2) #[46,46]- [46,46] =[46,46]
         #print(c.shape) # expect LayerK, LayerL, 
         return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
-
+        #returns many pos infs 
     def on_validation_epoch_start(self):
         
         self.naninfcount=0
@@ -295,10 +297,10 @@ class LightningCLIPModule(LightningModule):
         self.labels.append(batch[2].cpu())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
-        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2)) 
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
-        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2))
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200))
         joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))), nan=0.0,posinf=1,neginf=-2)
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
         ##Now Do Text
