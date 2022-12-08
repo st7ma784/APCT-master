@@ -402,14 +402,14 @@ class LightningCLIPModule(LightningModule):
         title =model_name+" HSIC" if title is None else model_name+title
         fig, ax = plt.subplots()
         if model_name=="IM":
-            print(self.IMhsic_matrix0.shape) #46
-            print(self.IMhsic_matrix2.shape) # 110
+            print(self.IMhsic_matrix0) #46
+            print(self.IMhsic_matrix2) # 110
             t=self.IMhsic_matrix0.unsqueeze(1)*self.IMhsic_matrix2.unsqueeze(0)
         #print(torch.sum(torch.abs(t)==t))
             r=torch.sqrt(torch.abs(t))
             r[torch.abs(t)==-t]=-r[torch.abs(t)==-t]
-            print("im1",self.IMhsic_matrix1.shape)
-            print("r", r.shape)
+            print("im1",self.IMhsic_matrix1)
+            print("r", r)
             hsic_matrix = torch.div(self.IMhsic_matrix1.squeeze().t(), r)
             print("hsic",hsic_matrix)
         else:
