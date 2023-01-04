@@ -71,6 +71,7 @@ class LightningCLIPModule(LightningModule):
         self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
 
         self.vocab_size = vocab_size
         self.automatic_optimization=False
