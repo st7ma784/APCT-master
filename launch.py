@@ -8,7 +8,6 @@ def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
         config=config.__dict__
         dir=config.get("dir",dir)
         logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweepv4",entity="st7ma784", save_dir=dir)
-        print(config)
 
     else: 
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
@@ -174,15 +173,8 @@ if __name__ == '__main__':
     NumTrials=hyperparams.num_trials
     #BEDE has Env var containing hostname  #HOSTNAME=login2.bede.dur.ac.uk check we arent launching on this node
     if NumTrials==-1:
-        #debug mode - We want to just run in debug mode... 
-        #pick random config and have at it! 
-        
         trial=hyperparams.generate_trials(1)[0]
-        #We'll grab a random trial, BUT have to launch it with KWARGS, so that DDP works.       
-        #result = call('{} {} --num_trials=0 {}'.format("python",os.path.realpath(sys.argv[0]),__get_hopt_params(trial)), shell=True)
-
         print("Running trial: {}".format(trial))
-        
         wandbtrain(trial)
 
     elif NumTrials ==0 and not str(os.getenv("HOSTNAME","localhost")).startswith("login"): #We'll do a trial run...
