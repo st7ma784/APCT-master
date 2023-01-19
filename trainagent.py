@@ -1,4 +1,6 @@
 from launch import *
+from subprocess import call
+
 def SlurmRun(args):
 
     job_with_version = '{}v{}'.format("SINGLEGPUTESTLAUNCH", 0)
