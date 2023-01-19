@@ -15,7 +15,7 @@ def SlurmRun(args):
         f'#SBATCH --signal=USR1@{5 * 60}',
         '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
         '#SBATCH --mail-user={}'.format('st7ma784@gmail.com'),
-        '#SBATCH --partition={}'.format('debug'),
+        #'#SBATCH --partition={}'.format('debug'),
     ]
     comm="python"
     slurm_commands={}
