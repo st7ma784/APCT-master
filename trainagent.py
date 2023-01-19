@@ -62,7 +62,7 @@ if __name__ == '__main__':
         import wandb
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="WasteDetection",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
         else:       
             print("No sweepid given, exiting")
     elif NumTrials ==0 and not str(os.getenv("HOSTNAME","localhost")).startswith("login"): #We'll do a trial run...
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         from WandBSweep import make_sweep
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="WasteDetection",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
         else:
             print("No sweepid given, exiting")
 
