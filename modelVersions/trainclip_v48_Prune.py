@@ -10,7 +10,9 @@ from clip.model import Transformer,LayerNorm,VisionTransformer
 from functools import partial,reduce
 import clip
 from operator import iadd
-
+#add APCT to path
+import sys
+sys.path.append("./APCT-master")
 from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
