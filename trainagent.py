@@ -1,4 +1,6 @@
 from launch import *
+from subprocess import call
+
 def SlurmRun(args):
 
     job_with_version = '{}v{}'.format("SINGLEGPUTESTLAUNCH", 0)
@@ -13,7 +15,7 @@ def SlurmRun(args):
         f'#SBATCH --signal=USR1@{5 * 60}',
         '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
         '#SBATCH --mail-user={}'.format('st7ma784@gmail.com'),
-        '#SBATCH --partition={}'.format('debug'),
+        #'#SBATCH --partition={}'.format('debug'),
     ]
     comm="python"
     slurm_commands={}
@@ -60,7 +62,7 @@ if __name__ == '__main__':
         import wandb
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="WasteDetection",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
         else:       
             print("No sweepid given, exiting")
     elif NumTrials ==0 and not str(os.getenv("HOSTNAME","localhost")).startswith("login"): #We'll do a trial run...
@@ -70,7 +72,7 @@ if __name__ == '__main__':
         from WandBSweep import make_sweep
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="WasteDetection",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
         else:
             print("No sweepid given, exiting")
 
