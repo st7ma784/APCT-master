@@ -49,7 +49,9 @@ def train(config={
         dir=config.get("dir",".")
     if Dataset is None:
         from BuildSpainDataSet import COCODataModule
-
+        from BuildLAION import LaionDataModule
+        
+        #Dataset=LaionDataModule(Cache_dir=dir,batch_size=config["batch_size"])
         Dataset=COCODataModule(Cache_dir=dir,batch_size=config["batch_size"])
     if devices is None:
         devices=config.get("devices","auto")

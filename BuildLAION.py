@@ -46,12 +46,12 @@ class LaionDataModule(pl.LightningDataModule):
             finally:
                 return examples
 #            return examples        #print(load_dataset("laion/laion400m",streaming=False,split="train").map(lambda example:print(example.keys())))
-        self.train=load_dataset("laion/laion400m",streaming=False,split="train").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
+        self.train=load_dataset("laion/laion400m",streaming=True,split="train").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
         self.train.set_transform(self.T)
 
-        self.val=load_dataset("laion/laion400m",streaming=False,split="validation").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
+        self.val=load_dataset("laion/laion400m",streaming=True,split="validation").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
         self.val.set_transform(self.T)
-        self.test=load_dataset("laion/laion400m",streaming=False,split="test").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
+        self.test=load_dataset("laion/laion400m",streaming=True,split="test").map(lambda example: tokenize(example),batched=True,num_proc=12,remove_columns=["TEXT"])
         self.test.set_transform(self.T)
     def train_dataloader(self, B=None):
         if B is None:

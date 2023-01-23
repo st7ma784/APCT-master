@@ -10,8 +10,6 @@ source /etc/profile
 module add anaconda3/wmlce
 source activate $global_storage/conda4
 module add git
-#cd $global_scratch
-#git clone https://github.com/carlosGarciaHe/MS-COCO-ES.git
 cd $global_storage/6DIMCOCO
 git pull
 export WANDB_SILENT=true
