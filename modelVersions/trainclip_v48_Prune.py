@@ -18,6 +18,60 @@ import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
 
+class PruneTrainer(BaseTrainer):
+    def __init__(self, args):
+        super().__init__(args)
+        self.model_hook = PruneHook(self.model, set_gamma(self.args.activation), 0.1)
+
+    def on_train_epoch_start(self) -> None:
+        if self.current_epoch not in self.args.prune_milestone:
+            return
+        else:
+            self.model_hook.set_up()
+
+    # def training_step(self, batch, batch_idx):
+    #     super().training_step(batch, batch_idx)
+
+    def on_train_epoch_end(self) -> None:
+        self.model_hook.remove()
+    # def on_validation_epoch_start(self) -> None:
+    #     if self.current_epoch not in self.args.prune_milestone:
+    #         return
+    #     self.model_hook.set_up()
+    #     return super().on_validation_epoch_start()
+
+    def validation_epoch_end(self, validation_step_outputs):
+        if self.current_epoch not in self.args.prune_milestone:
+            return
+
+        im_scores = {}
+        info = {'step': self.global_step, 'epoch': self.current_epoch}
+        global_entropy = self.model_hook.retrieve(reshape=False)
+        for name, block in self.model.named_modules():
+            if not self.check_last_block(block) and self.check_valid_block(block):
+                im_scores.update(prune_block(block, global_entropy[name], self.args.prune_eta))
+
+        iteratively_prune(im_scores, self.args)
+        monitor(im_scores, info)
+        # self.model_hook.remove()
+
+        wandb.log(info)
+        return
+
+    def save_model(self, save_dir):
+        self.load_best(save_dir)
+        self.iteratively_remove()
+        pth_path = os.path.join(save_dir, 'model.pth')
+        torch.save(self.model, pth_path)
+        return
+
+    def iteratively_remove(self):
+        for name, module in self.named_modules():
+            if not self.check_last_block(module) and self.check_valid_block(module):
+                remove_block(module)
+
+
+
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
@@ -436,3 +490,23 @@ class LightningCLIPModule(LightningModule):
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
+
+
+from core.pattern import EntropyHook
+
+
+class PruneHook(EntropyHook):
+    def __init__(self, model, Gamma, ratio=1):
+        super().__init__(model, Gamma, ratio)
+    def process_layer(self,layer):
+        layer = layer.reshape(self.num_pattern, -1)
+        layer /= layer.sum(axis=0)
+        s = torch.zeros(layer.shape[1:], device=layer.device)
+        for j in range(self.num_pattern):
+            s += -layer[j] * np.log(1e-8 + layer[j])
+        return s
+    def process_block_entropy(self, block):
+        return [self.process_layer(layer) for layer in block.values()]
+
+    def retrieve(self):
+        return  {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}

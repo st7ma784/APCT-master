@@ -14,11 +14,57 @@ from operator import iadd
 import sys
 sys.path.append("./APCT-master")
 #import APCT
+from math import random
 
 from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
+
+
+from core.pattern import BaseHook, get_pattern
+
+class EntropyHook(BaseHook):
+    """
+    Entropy hook is a forward hood that computes the neuron entropy of the network.
+    """
+    def __init__(self, model, Gamma=[0], ratio=1):
+        """
+        Initialization method.
+        :param model: Pytorch model, which should be a sequential blocks
+        :param Gamma: The breakpoint for a given activation function, i.e.
+                        {0} separates ReLU and PReLU into two linear regions.
+                        {-0.5, 0.5} separates Sigmoid and tanH into 2 semi-constant region and 1 semi-linear region.
+        """
+        super().__init__(model)
+        self.Gamma = Gamma
+        self.num_pattern = len(Gamma) + 1
+        self.ratio = ratio
+
+    def hook(self, block_name, layer_name):
+        """
+        :param block_name:
+        :param layer_name:
+        :return:
+        """
+        def fn(layer, input_var, output_var):
+            """
+            Count the frequency of each pattern
+            """
+            self.features[block_name][layer_name] = torch.add(torch.tensor([ (get_pattern(input_var[0], self.Gamma) == i).sum(axis=0) for i in range(1 + len(self.Gamma))]),self.features[block_name].get(layer_name,None))
+        return fn
+    def process_layer(self, layer):
+        layer = layer.reshape(self.num_pattern, -1)
+        layer /= layer.sum(axis=0)
+        s = torch.zeros(layer.shape[1:], device=layer.device)
+        for j in range(self.num_pattern):
+            s += -layer[j] * np.log(1e-8 + layer[j])
+        return s
+    def retrieve(self, reshape=True):
+        return [self.process_layer(layer) for block in self.features.values() for layer in block.values()]
+        
+
+
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -45,6 +91,7 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
+        self.model_hook = EntropyHook(self.model, 0)
 
         self.context_length = context_length
         self.encoder = Transformer(
