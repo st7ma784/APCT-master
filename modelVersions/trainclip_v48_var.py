@@ -210,20 +210,22 @@ class LightningCLIPModule(LightningModule):
         labels=labels+self.lossim.ignore_index
         
         im,captions= batch[0],batch[1]
+        try:
+            logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         
-        logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        
-        lossim = self.lossim(logits, labels)
+            lossim = self.lossim(logits, labels)
 
-        loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
-        loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
-        loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
-        loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
-        loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
-        loss = lossim+loss1+loss2+loss3+loss4+loss5
-        loss=loss/6
-        loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+            loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
+            loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
+            loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
+            loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
+            loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
+            loss = lossim+loss1+loss2+loss3+loss4+loss5
+            loss=loss/6
+            loss = loss.mean()
+            self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        except:
+            loss=None
         return {"loss": loss}
 
             
