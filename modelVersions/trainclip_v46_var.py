@@ -181,22 +181,30 @@ class LightningCLIPModule(LightningModule):
         labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index))))
       
         labels=labels+self.lossim.ignore_index
-        #self.labels=self.labels.to(self.device)
-        im,captions,cat= batch[0],batch[1],batch[2]
-        self.labels.append(cat.cpu())
-        #print(captions.shape)#Batchx 5 Capions x Length
-        imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        #print(logits1.shape ,labels.shape)
-        loss1 = self.loss1(logits1, labels)
-        loss2 = self.loss2(logits2, labels)
-        loss3 = self.loss3(logits3, labels)
-        loss4 = self.loss4(logits4, labels)
-        loss5 = self.loss5(logits5, labels)
-        lossim = self.lossim(imlogits, labels)
-        loss = lossim+loss1+loss2+loss3+loss4+loss5
-        loss=loss/6
-        loss = loss.mean()
+        try:
+            #self.labels=self.labels.to(self.device)
+            im,captions= batch[0],batch[1]
+            #print(captions.shape)#Batchx 5 Capions x Length
+            imlogits,logits1,logits2,logits3,logits4,logits5=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+            #print(logits1.shape ,labels.shape)
+            loss1 = self.loss1(logits1, labels)
+            loss2 = self.loss2(logits2, labels)
+            loss3 = self.loss3(logits3, labels)
+            loss4 = self.loss4(logits4, labels)
+            loss5 = self.loss5(logits5, labels)
+            lossim = self.lossim(imlogits, labels)
+            loss = lossim+loss1+loss2+loss3+loss4+loss5
+            loss=loss/6
+            loss = loss.mean()
+        except Exception as e:
+
+            print(e)
+            loss=None
         self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        try:
+            self.labels.append(batch[2].cpu())
+        except:
+            pass
         return {"loss": loss}
 
             
