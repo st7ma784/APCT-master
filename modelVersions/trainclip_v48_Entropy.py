@@ -20,10 +20,7 @@ from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
-
-
 from core.pattern import BaseHook, get_pattern
-from core.pattern import PruneHook, set_gamma, prune_block
 from torch.nn.utils.prune import l1_unstructured, random_structured, ln_structured, remove, identity, is_pruned
 
 def iteratively_prune(im_dict, args):
@@ -52,7 +49,7 @@ def prune_module(param_to_prune, im_score, args):
         hard_ind = tensor_to_pru[(slice(None, ),) + (0,) * (num_dims - 1)]
         if block == 'ConvBlock':
             num_filters = torch.sum(hard_ind < args.conv_pru_bound).to(torch.int)
-        elif block == 'LinearBlock':
+        elif block == 'LinearBlock' or block == 'RABlock':
             num_filters = torch.sum(hard_ind < args.fc_pru_bound).to(torch.int)
         else:
             raise NameError("Invalid Block for pruning")
@@ -68,73 +65,10 @@ def prune_module(param_to_prune, im_score, args):
                              "got {0} and {1}".format(num_filters, len(tensor_to_pru)))
             if not hasattr(module, name + '_mask'):
                 identity(module, name)
-def prune_block(block, block_entropy, eta):
-    if isinstance(block, ConvBlock) or isinstance(block, LinearBlock):
-        return prune_linear_transform_block(block, block_entropy, eta)
-    # elif isinstance(block, LinearBlock):
-    #     return prune_linear_block(block, block_entropy, eta)
 
 
-def compute_importance(weight, channel_entropy, eta):
-    """
-    Compute the importance score based on weight and entropy of a channel
-    :param weight:  Weight of the module, shape as:
-                    ConvBlock: in_channels * out_channels * kernel_size_1 * kernel_size_2
-                    LinearBlock: in_channels * out_channels
-    :param channel_entropy: The averaged entropy of each channel, shape as in_channels * 1 * (1 * 1)
-    :param eta: the importance of entropy in pruning,
-                -1:     hard prune without using weight
-                0:      prune by weight
-                1:      prune by channel_entropy
-                2: weight * entropy
-                else:   eta * channel_entropy * weight
-    :return:    The importance_scores
-    """
-    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1
-    weight = abs(weight)
-    e_new_shape = (-1, ) + (1, ) * (weight.dim() - 1)
-    channel_entropy = torch.tensor(channel_entropy).view(e_new_shape).cuda()
-    if eta == -1:
-        importance_scores = channel_entropy * torch.ones_like(weight)
-    elif eta == 0:
-        importance_scores = weight
-    elif eta == 2:
-        importance_scores = channel_entropy * weight
-    elif eta == 3:
-        importance_scores =1 / (1 / (channel_entropy +1e-8) + 1 / (weight+ 1e-8))
-    elif eta == 4:
-        normed_entropy = (channel_entropy - channel_entropy.mean()) / channel_entropy.std()
-        normed_weight = (weight - weight.mean()) / weight.std()
-        importance_scores = normed_entropy * normed_weight
-    elif eta == 5:
-        normed_entropy = (channel_entropy - channel_entropy.mean()) / channel_entropy.std()
-        normed_weight = (weight - weight.mean()) / weight.std()
-        importance_scores = normed_entropy + normed_weight
-    else:
-        raise ValueError()
 
-    return importance_scores
 
-def prune_linear_transform_block(block, block_entropy, eta):
-    """
-    :param block: Conv block to be pruned
-    :param block_entropy: entropy of the block output (out_channels * H * W)
-    :param eta: hyper parameter.
-    :return:
-    """
-    weights = getattr(block.LT, 'weight').detach()
-    num_dim = len(block_entropy[0].shape)                               # num of dimensions
-    channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-    lt_im_score = compute_importance(weights, channel_entropy, eta)
-    bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
-
-    block_type = 'ConvBlock' if isinstance(block, ConvBlock) else 'LinearBlock'
-    im_dict = {
-        (block.LT, 'weight', block_type): lt_im_score,
-        (block.BN, 'weight', block_type): bn_im_score,
-        (block.BN, 'bias', block_type): bn_im_score
-    }
-    return im_dict
 class EntropyHook(BaseHook):
     """
     Entropy hook is a forward hood that computes the neuron entropy of the network.

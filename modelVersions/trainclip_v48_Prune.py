@@ -17,13 +17,10 @@ from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
-from core.pattern import PruneHook, set_gamma, prune_block
+from core.pattern import PruneHook, set_gamma
 from torch.nn.utils.prune import l1_unstructured, random_structured, ln_structured, remove, identity, is_pruned
 
-def iteratively_prune(im_dict, args):
-    for param_to_prune, im_score in im_dict.items():
-        prune_module(param_to_prune, im_score, args)
-
+    
 
 def prune_module(param_to_prune, im_score, args):
     module, name, block = param_to_prune
@@ -46,7 +43,7 @@ def prune_module(param_to_prune, im_score, args):
         hard_ind = tensor_to_pru[(slice(None, ),) + (0,) * (num_dims - 1)]
         if block == 'ConvBlock':
             num_filters = torch.sum(hard_ind < args.conv_pru_bound).to(torch.int)
-        elif block == 'LinearBlock':
+        elif block == 'LinearBlock' or block=="RABlock":
             num_filters = torch.sum(hard_ind < args.fc_pru_bound).to(torch.int)
         else:
             raise NameError("Invalid Block for pruning")
@@ -62,13 +59,15 @@ def prune_module(param_to_prune, im_score, args):
                              "got {0} and {1}".format(num_filters, len(tensor_to_pru)))
             if not hasattr(module, name + '_mask'):
                 identity(module, name)
+from clip.model import ResidualAttentionBlock
 def prune_block(block, block_entropy, eta):
-    if isinstance(block, ConvBlock) or isinstance(block, LinearBlock):
-        return prune_linear_transform_block(block, block_entropy, eta)
+    
+    # if isinstance(block, ConvBlock) or isinstance(block, LinearBlock):
+        # return prune_linear_transform_block(block, block_entropy, eta)
+    if isinstance(block, ResidualAttentionBlock):
+        return prune_Residual_Attention_block(block, block_entropy, eta)
     # elif isinstance(block, LinearBlock):
     #     return prune_linear_block(block, block_entropy, eta)
-
-
 def compute_importance(weight, channel_entropy, eta):
     """
     Compute the importance score based on weight and entropy of a channel
@@ -109,69 +108,50 @@ def compute_importance(weight, channel_entropy, eta):
 
     return importance_scores
 
-def prune_linear_transform_block(block, block_entropy, eta):
+
+def prune_Residual_Attention_block(block, block_entropy, eta):
     """
-    :param block: Conv block to be pruned
+    :param block: RA block to be pruned
     :param block_entropy: entropy of the block output (out_channels * H * W)
     :param eta: hyper parameter.
     :return:
     """
-    weights = getattr(block.LT, 'weight').detach()
+
+    #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
+    weightsDict={"attn":block.attn,
+                "LN1":block.ln_1, #layer norm
+                "MLP":block.mlp,    
+                "MLP_cfc":block.mlp["c_fc"], #Linear layer
+                "MLP_gelu":block.mlp["gelu"],
+                "MLP_c_proj":block.mlp["c_proj"], #Linear layer
+                "LN2":block.ln_2, #layer norm
+                }
+    LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
+    #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
     num_dim = len(block_entropy[0].shape)                               # num of dimensions
     channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-    lt_im_score = compute_importance(weights, channel_entropy, eta)
-    bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
+    #lt_im_score = compute_importance(weights, channel_entropy, eta)
+    lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
 
-    block_type = 'ConvBlock' if isinstance(block, ConvBlock) else 'LinearBlock'
-    im_dict = {
-        (block.LT, 'weight', block_type): lt_im_score,
-        (block.BN, 'weight', block_type): bn_im_score,
-        (block.BN, 'bias', block_type): bn_im_score
-    }
-    return im_dict
-class PruneTrainer(BaseTrainer):
-    def __init__(self, args):
-        super().__init__(args)
-        self.model_hook = PruneHook(self.model, set_gamma(self.args.activation), 0.1)
-
-    def on_train_epoch_start(self) -> None:
-        if self.current_epoch not in self.args.prune_milestone:
-            return
-        else:
-            self.model_hook.set_up()
-
-    # def training_step(self, batch, batch_idx):
-    #     super().training_step(batch, batch_idx)
-
-    def on_train_epoch_end(self) -> None:
-        self.model_hook.remove()
-    # def on_validation_epoch_start(self) -> None:
-    #     if self.current_epoch not in self.args.prune_milestone:
-    #         return
-    #     self.model_hook.set_up()
-    #     return super().on_validation_epoch_start()
-
-    def validation_epoch_end(self, validation_step_outputs):
-        if self.current_epoch not in self.args.prune_milestone:
-            return
-
-        #im_scores = {}
-        #info = {'step': self.global_step, 'epoch': self.current_epoch}
-        global_entropy = self.model_hook.retrieve(reshape=False)
-        #for name, block in self.model.named_modules():
-        #    if not self.check_last_block(block) and self.check_valid_block(block):
-        #        im_scores.update(prune_block(block, global_entropy[name], self.args.prune_eta)) #calculate importance based on entropy
-        im_scores ={prune_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.model.named_modules() if not self.check_last_block(block) and self.check_valid_block(block)}
-        
-        iteratively_prune(im_scores, self.args)#then purun accordingly 
-        #monitor(im_scores, info)
-        # self.model_hook.remove()
-
-        #wandb.log(info)
-        #return
+    #lt_im_score_dict={K: compute_importance(V.weight.detach(), channel_entropy, eta) for K,V in weightsDict.items()}
+    #bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
+    #bn_im_score_dict={K: V.mean(dim=tuple(range(1, LTWeightsDict[K].dim()))) for K,V in lt_importance_dict.items()}
+    block_type = 'RABlock'
 
 
-
+    # im_dict = {
+    #     (block.LT, 'weight', block_type): lt_im_score,
+    #     (block.BN, 'weight', block_type): bn_im_score,
+    #     (block.BN, 'bias', block_type): bn_im_score
+    # }
+    linear_im_dict = {
+        (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
+    # bn_weight_im_dict = {
+    #     (K,"weight",block_type):V for K,V in bn_im_score_dict.items()}
+    # bn_bias_im_dict = {
+    #     (K,"bias",block_type):V for K,V in bn_im_score_dict.items()}
+    
+    return linear_im_dict
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
@@ -198,6 +178,7 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
+        self.model_hook = PruneHook(self.model, set_gamma(self.args.activation), 0.1)
 
         self.context_length = context_length
         self.encoder = Transformer(
@@ -241,6 +222,20 @@ class LightningCLIPModule(LightningModule):
         self.naninfcount=0
         print("done")
 
+    def on_train_epoch_start(self) -> None:
+        if self.current_epoch not in self.args.prune_milestone:
+            return
+        else:
+            self.model_hook.set_up()
+
+    # def training_step(self, batch, batch_idx):
+    #     super().training_step(batch, batch_idx)
+
+    def on_train_epoch_end(self) -> None:
+        self.model_hook.remove()
+
+
+    
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
@@ -479,7 +474,8 @@ class LightningCLIPModule(LightningModule):
        
       
 
-    def on_validation_epoch_end(self):
+
+    def validation_epoch_end(self, validation_step_outputs):
 
 
         # Evaluate using the logistic regression classifier
@@ -538,6 +534,12 @@ class LightningCLIPModule(LightningModule):
         
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
         
+        global_entropy = self.model_hook.retrieve(reshape=False)
+        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.model.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
+        for param_to_prune, im_score in im_scores.items():
+            prune_module(param_to_prune, im_score, self.args)
+        #then purun accordingly 
+        self.model_hook.remove()
   
     def export(self):
         """
