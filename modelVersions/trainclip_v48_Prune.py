@@ -224,11 +224,8 @@ class LightningCLIPModule(LightningModule):
         print("done")
 
     def on_train_epoch_start(self) -> None:
-        if self.current_epoch not in self.args.prune_milestone:
-            return
-        else:
-            self.model_hookI.set_up()
-            self.model_hookT.set_up()
+        self.model_hookI.set_up()
+        self.model_hookT.set_up()
 
     # def training_step(self, batch, batch_idx):
     #     super().training_step(batch, batch_idx)
