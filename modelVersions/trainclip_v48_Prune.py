@@ -178,8 +178,8 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
-        self.model_hook = PruneHook(self.model, set_gamma(self.args.activation), 0.1)
-
+        self.args=kwargs
+        self.args.prune_eta = -1
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
@@ -195,7 +195,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        
+        self.model_hookI = PruneHook(self.encode_image,[0], 0.1)
+        self.model_hookT = PruneHook(self.encoder,[0], 0.1)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
@@ -226,13 +227,15 @@ class LightningCLIPModule(LightningModule):
         if self.current_epoch not in self.args.prune_milestone:
             return
         else:
-            self.model_hook.set_up()
+            self.model_hookI.set_up()
+            self.model_hookT.set_up()
 
     # def training_step(self, batch, batch_idx):
     #     super().training_step(batch, batch_idx)
 
     def on_train_epoch_end(self) -> None:
-        self.model_hook.remove()
+        self.model_hookI.remove()
+        self.model_hookT.remove()
 
 
     
@@ -534,13 +537,21 @@ class LightningCLIPModule(LightningModule):
         
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
         
-        global_entropy = self.model_hook.retrieve(reshape=False)
-        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.model.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
+        global_entropy = self.model_hookI.retrieve(reshape=False)
+        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.encode_image.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
         for param_to_prune, im_score in im_scores.items():
             prune_module(param_to_prune, im_score, self.args)
         #then purun accordingly 
-        self.model_hook.remove()
-  
+        self.model_hookI.remove()
+
+
+        global_entropy = self.model_hookT.retrieve(reshape=False)
+        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.encoder.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
+        for param_to_prune, im_score in im_scores.items():
+            prune_module(param_to_prune, im_score, self.args)
+        #then purun accordingly 
+        self.model_hookT.remove()
+
     def export(self):
         """
         Exports the CKA data along with the respective model layer names.
