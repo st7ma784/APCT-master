@@ -461,6 +461,25 @@ class LightningCLIPModule(LightningModule):
             handle.remove()
         print(self.naninfcount)
         del self.model2
+        
+        global_entropy = self.model_hookI.retrieve()
+        print(global_entropy.keys())#dict_keys(['transformer.resblocks.0', 'transformer.resblocks.1', 'transformer.resblocks.2', 'transformer.resblocks.3', 'transformer.resblocks.4'])
+
+        im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock)]
+        for imscoredict in im_scores:
+            for (param_to_prune, im_score) in imscoredict.items():
+                prune_module(param_to_prune, im_score, self.args)
+        #then purun accordingly 
+        self.model_hookI.remove()
+
+
+        global_entropy = self.model_hookT.retrieve()
+        im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock)]
+        for imscoredict in im_scores:
+            for (param_to_prune, im_score) in imscoredict.items():
+                prune_module(param_to_prune, im_score, self.args)
+        #then purun accordingly 
+        self.model_hookT.remove()
      
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
@@ -502,22 +521,6 @@ class LightningCLIPModule(LightningModule):
         
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
         
-        global_entropy = self.model_hookI.retrieve()
-        print(global_entropy.keys())#dict_keys(['transformer.resblocks.0', 'transformer.resblocks.1', 'transformer.resblocks.2', 'transformer.resblocks.3', 'transformer.resblocks.4'])
-
-        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock)}
-        for param_to_prune, im_score in im_scores:
-            prune_module(param_to_prune, im_score, self.args)
-        #then purun accordingly 
-        self.model_hookI.remove()
-
-
-        global_entropy = self.model_hookT.retrieve()
-        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) }
-        for param_to_prune, im_score in im_scores:
-            prune_module(param_to_prune, im_score, self.args)
-        #then purun accordingly 
-        self.model_hookT.remove()
 
     def export(self):
         """
