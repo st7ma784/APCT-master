@@ -537,7 +537,7 @@ class LightningCLIPModule(LightningModule):
         global_entropy = self.model_hookI.retrieve()
         print(global_entropy.keys())
 
-        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()}
+        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()}
         for param_to_prune, im_score in im_scores:
             prune_module(param_to_prune, im_score, self.args)
         #then purun accordingly 
@@ -545,7 +545,7 @@ class LightningCLIPModule(LightningModule):
 
 
         global_entropy = self.model_hookT.retrieve()
-        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()}
+        im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()}
         for param_to_prune, im_score in im_scores:
             prune_module(param_to_prune, im_score, self.args)
         #then purun accordingly 
