@@ -34,6 +34,10 @@ def train(config={
     import pytorch_lightning
 
     from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
+    if config["codeversion"]==10:
+        from modelVersions.trainclip_v48_BaselineStock import LightningCLIPModule
+    if config["codeversion"]==9:
+        from modelVersions.trainclip_v48_Baseline import LightningCLIPModule #this is for n=2 with my loss
     if config["codeversion"]==8:
         from modelVersions.trainclip_v48_Entropy import LightningCLIPModule
     if config["codeversion"]==7:
@@ -85,7 +89,7 @@ def train(config={
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25, Not supported for manual optimization
-            fast_dev_run=False,
+            fast_dev_run=True,
             precision=p
     )
     if config["batch_size"] !=1:

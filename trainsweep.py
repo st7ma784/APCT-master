@@ -37,7 +37,7 @@ if __name__=="__main__":
                 'values': [128,256,512]
             },
             'codeversion':{
-                'values':[1,3,4,5,6]
+                'values':[6,7,5,9,10]
             },
             'transformer_heads':{
                 'values': [8,16,32]
