@@ -82,7 +82,7 @@ class EntropyHook(BaseHook):
         """
         super().__init__(model)
         self.Gamma = Gamma 
-        self.num_pattern = len(Gamma) + 1
+        self.num_pattern =2
         self.ratio = ratio
 
     def hook(self, block_name, layer_name):
