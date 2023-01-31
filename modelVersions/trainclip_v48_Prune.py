@@ -612,6 +612,16 @@ from core.pattern import EntropyHook
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
+    def set_up(self):
+        """
+        Remove all previous hooks and register hooks for each of t
+        :return:
+        """
+        self.remove()
+        for block_name, block in self.model.named_modules():
+            if type(block) in [ResidualAttentionBlock]:
+                self.features[block_name] = {}
+                self.add_block_hook(block_name, block)
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 
