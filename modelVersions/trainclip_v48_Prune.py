@@ -537,7 +537,7 @@ class LightningCLIPModule(LightningModule):
         
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
         
-        global_entropy = self.model_hookI.retrieve(reshape=False)
+        global_entropy = self.model_hookI.retrieve()
         im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.encode_image.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
         for param_to_prune, im_score in im_scores.items():
             prune_module(param_to_prune, im_score, self.args)
@@ -545,7 +545,7 @@ class LightningCLIPModule(LightningModule):
         self.model_hookI.remove()
 
 
-        global_entropy = self.model_hookT.retrieve(reshape=False)
+        global_entropy = self.model_hookT.retrieve()
         im_scores ={prune_Residual_Attention_block(block, global_entropy[name], self.args.prune_eta) for name, block in self.encoder.named_modules()[:-1] if isinstance(block, ResidualAttentionBlock)}
         for param_to_prune, im_score in im_scores.items():
             prune_module(param_to_prune, im_score, self.args)
