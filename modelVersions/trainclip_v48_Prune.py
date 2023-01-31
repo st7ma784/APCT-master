@@ -128,7 +128,8 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
                 }
     LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
-    num_dim = len(block_entropy[0].shape)                               # num of dimensions
+    print("block_entropy",block_entropy.shape)
+    num_dim = len(block_entropy.shape)                               # num of dimensions
     channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
     lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
@@ -287,41 +288,6 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def calculate_loss(self, I, C1, C2, C3, C4, C5):
-        #Calculate loss
-        #Loss=1 - sum((values - mean)^2)
-        arrMean=torch.add(  torch.div( I,6).view( I.shape[0],1,1,1,1,1,-1),
-                            torch.div(C1,6).view(1,C1.shape[0],1,1,1,1,-1)).add(
-                torch.add(  torch.div(C2,6).view(1,1,C2.shape[0],1,1,1,-1),
-                            torch.div(C3,6).view(1,1,1,C3.shape[0],1,1,-1)).add(
-                torch.add(  torch.div(C4,6).view(1,1,1,1,C4.shape[0],1,-1),
-                            torch.div(C5,6).view(1,1,1,1,1,C5.shape[0],-1))))
-        #Now we have the mean in the final dim shape (B,B,B,B,B,B,512)
-        #Normally, we'd do something like Val-mean. However, we do this the other way round for speed, and we can do this because abs(a-b)===abs(b-a)
-        #L2normm(Allvalues-mean)
-        var= torch.sum(torch.sqrt(torch.add(torch.pow(torch.abs(torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1))),2),
-                                                 torch.pow(torch.abs(torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1))),2)).add(
-                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1))),2),
-                                                 torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
-                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
-                                                 torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
-        return 1-var
-        #print(Arr.shape)
-    
-    def calculate_loss2( self, I, C1, C2, C3, C4, C5):
-    
-        return 1-torch.sum(torch.sqrt(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
-                                                  torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
-                                                  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
-                                                  torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1),
-                                                  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
-                                                  torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)]).sub_(
-                            torch.pow(reduce(torch.add,[I.view( I.shape[0],1,1,1,1,1,-1),
-                                                        C1.view(1,C1.shape[0],1,1,1,1,-1),
-                                                        C2.view(1,1,C2.shape[0],1,1,1,-1),
-                                                        C3.view(1,1,1,C3.shape[0],1,1,-1),
-                                                        C4.view(1,1,1,1,C4.shape[0],1,-1),
-                                                        C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6)),dim=-1)
     def calculate_loss3(self, I, C1, C2, C3, C4, C5):
   
         return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
