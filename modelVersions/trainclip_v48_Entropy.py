@@ -14,7 +14,6 @@ from operator import iadd
 import sys
 sys.path.append("./APCT-master")
 #import APCT
-from math import random
 
 from warnings import warn
 import matplotlib.pyplot as plt
