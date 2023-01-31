@@ -128,7 +128,9 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
                 }
     LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
-    print("block_entropy",block_entropy.shape)
+    print("block_entropy",block_entropy)
+    if len(block_entropy) == 0:
+        return {}
     num_dim = len(block_entropy.shape)                               # num of dimensions
     channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
