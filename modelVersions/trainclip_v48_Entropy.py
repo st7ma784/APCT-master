@@ -145,7 +145,6 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
-        self.model_hook = EntropyHook(self.model, 0)
 
         self.context_length = context_length
         self.encoder = Transformer(
@@ -162,7 +161,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        
+        self.model_hookT = EntropyHook(self.encoder, 0)
+        self.model_hookI = EntropyHook(self.encode_image, 0)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
