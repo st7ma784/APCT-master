@@ -329,7 +329,7 @@ class LightningCLIPModule(LightningModule):
         loss=loss/6
         loss = loss.mean()
         self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        return {"loss": loss}
+        return loss
 
             
     def configure_optimizers(self):
