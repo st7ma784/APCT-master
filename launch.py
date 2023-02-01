@@ -32,29 +32,28 @@ def train(config={
     },dir=None,devices=None,accelerator=None,Dataset=None,logtool=None):
 
     import pytorch_lightning
-
+    version=int(config.get("codeversion",-1))
     from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-    if config["codeversion"]==10:
+    if version==10:
         from modelVersions.trainclip_v48_BaselineStock import LightningCLIPModule
-    if config["codeversion"]==9:
+    elif version==9:
         from modelVersions.trainclip_v48_Baseline import LightningCLIPModule #this is for n=2 with my loss
-    if config["codeversion"]==8:
+    elif version==8:
         from modelVersions.trainclip_v48_Entropy import LightningCLIPModule
-    if config["codeversion"]==7:
+    elif version==7:
         from modelVersions.trainclip_v48_Prune import LightningCLIPModule
-    if config["codeversion"]==6:
+    elif version==6:
         from modelVersions.trainclip_v48_var import LightningCLIPModule
-    if config["codeversion"]==5:
+    elif version==5:
         from modelVersions.trainclip_v47_var import LightningCLIPModule
-    elif config["codeversion"]==4:
+    elif version==4:
         from modelVersions.trainclip_v46_var import LightningCLIPModule
-    elif config["codeversion"]==3:
+    elif version==3:
         from modelVersions.trainclip_v45_var import LightningCLIPModule
-    elif config["codeversion"]==1:
+    elif version==1:
         from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
     else:
         print("CONFIG",config)
-        raise("No code version found")
     model=LightningCLIPModule( train_batch_size=config["batch_size"], **config)
     if dir is None:
         dir=config.get("dir",".")
