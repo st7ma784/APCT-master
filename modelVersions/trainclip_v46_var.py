@@ -205,7 +205,7 @@ class LightningCLIPModule(LightningModule):
             self.labels.append(batch[2].cpu())
         except:
             pass
-        return {"loss": loss}
+        return loss
 
             
     def configure_optimizers(self):
