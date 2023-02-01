@@ -59,7 +59,7 @@ if __name__ == '__main__':
     args=parser.parse_args()
     NumTrials=args.num_trials
     #HOSTNAME=login2.bede.dur.ac.uk check we arent launching on this node
-    runfunc=partial(wandbtrain,dir=args.dir, entity=args.entity, project=args.project, sweep=args.sweep)
+    runfunc=partial(wandbtrain,dir=args.dir, entity=args.entity, project=args.project)
     if NumTrials==-1:
         
         print("Running trial: single wandbsweep: sweepid",args.sweep,"project",args.project,"entity",args.entity)
