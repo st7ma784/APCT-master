@@ -62,7 +62,7 @@ if __name__ == '__main__':
     runfunc=partial(wandbtrain,dir=args.dir, entity=args.entity, project=args.project, sweep=args.sweep)
     if NumTrials==-1:
         
-        print("Running trial: single wandbsweep")
+        print("Running trial: single wandbsweep: sweepid",args.sweep,"project",args.project,"entity",args.entity)
         import wandb
         if args.sweep:
             print("Using sweepid",args.sweep)
