@@ -167,7 +167,7 @@ class LightningCLIPModule(LightningModule):
         except:
             loss=None
         finally:
-            return {'loss': loss}
+            return loss
 
             
     def configure_optimizers(self):
@@ -264,7 +264,7 @@ class LightningCLIPModule(LightningModule):
             self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
             self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
             return {"loss":np.mean(self.Linearloss)}
-        return {"loss":0}
+        return None
 
     def on_validation_epoch_end(self):
 
