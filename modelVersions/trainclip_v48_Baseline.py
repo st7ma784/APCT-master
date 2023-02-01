@@ -164,7 +164,7 @@ class LightningCLIPModule(LightningModule):
         except:
             loss=None
         finally:
-            return {'loss': loss}
+            return loss
 
             
     def configure_optimizers(self):
