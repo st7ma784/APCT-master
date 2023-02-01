@@ -439,12 +439,13 @@ class LightningCLIPModule(LightningModule):
         #     self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
-       
-        testpred=self.classifier.predict(i.numpy())
-        self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
-        self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
-        return {"loss":np.mean(self.Linearloss)}
-
+        if self.current_epoch>0:
+            testpred=self.classifier.predict(i.numpy())
+            self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
+            self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
+            return {"loss":np.mean(self.Linearloss)}
+        else:
+            return {"loss":None}
     def validation_epoch_end(self, validation_step_outputs):
 
 
