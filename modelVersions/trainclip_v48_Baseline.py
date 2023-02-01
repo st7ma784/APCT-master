@@ -228,10 +228,6 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         i=self.encode_image(batch[0]).cpu() #run through main mode
-        if self.current_epoch>0:
-            testpred=self.classifier.predict(i.numpy())
-            self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
-            self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
        
         self.features.append(i)
         self.labels.append(batch[2].cpu())
@@ -260,7 +256,12 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
-      
+        if self.current_epoch>0:
+            testpred=self.classifier.predict(i.numpy())
+            self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
+            self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
+            return {"loss":np.mean(self.Linearloss)}
+        return {"loss":0}
 
     def on_validation_epoch_end(self):
 
