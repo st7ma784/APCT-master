@@ -15,6 +15,7 @@ def SlurmRun(args):
         f'#SBATCH --signal=USR1@{5 * 60}',
         '#SBATCH --mail-type={}'.format(','.join(['END','FAIL'])),
         '#SBATCH --mail-user={}'.format('st7ma784@gmail.com'),
+        '#SBATCH --output={}/%j.out'.format(args.logdir),
         #'#SBATCH --partition={}'.format('debug'),
     ]
     comm="python"
@@ -52,17 +53,20 @@ if __name__ == '__main__':
     parser.add_argument('--num_trials', type=int, default=-1, help='how many runs')
     parser.add_argument('--dir', type=str, default=None, help='where to save')
     parser.add_argument('--sweep', type=str, default=None, help='Sweepid')
+    parser.add_argument('--logdir', type=str,default=".", help='Where to save logs')
+    parser.add_argument('--project', type=str, default="6DimCachespliteinSweep", help='wandb project')
+    parser.add_argument('--entity', type=str, default="st7ma784", help='wandb entity')
     args=parser.parse_args()
     NumTrials=args.num_trials
     #HOSTNAME=login2.bede.dur.ac.uk check we arent launching on this node
-    runfunc=partial(wandbtrain,dir=args.dir)
+    runfunc=partial(wandbtrain,dir=args.dir, entity=args.entity, project=args.project, sweep=args.sweep)
     if NumTrials==-1:
         
         print("Running trial: single wandbsweep")
         import wandb
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project=args.project,entity=args.sweep)
         else:       
             print("No sweepid given, exiting")
     elif NumTrials ==0 and not str(os.getenv("HOSTNAME","localhost")).startswith("login"): #We'll do a trial run...
@@ -72,7 +76,7 @@ if __name__ == '__main__':
         from WandBSweep import make_sweep
         if args.sweep:
             print("Using sweepid",parser.parse_args().sweep)
-            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project="6DimCachespliteinSweep",entity="st7ma784")
+            wandb.agent(parser.parse_args().sweep, function=runfunc, count=1, project=args.project,entity=args.sweep)
         else:
             print("No sweepid given, exiting")
 

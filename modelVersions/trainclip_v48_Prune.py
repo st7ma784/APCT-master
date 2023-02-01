@@ -417,10 +417,10 @@ class LightningCLIPModule(LightningModule):
         self.labels.append(batch[2].cpu())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
-        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
-        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200))
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2))
         joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))), nan=0.0,posinf=1,neginf=-2)
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
         ##Now Do Text
@@ -440,8 +440,10 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
-      
-
+        testpred=self.classifier.predict(i.numpy())
+        self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
+        self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
+        return {"loss":np.mean(self.Linearloss)}
 
     def validation_epoch_end(self, validation_step_outputs):
 

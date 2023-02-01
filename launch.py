@@ -1,20 +1,20 @@
 
 import os,sys
 
-def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None):
+def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None,project="6DIMCLIPTOKSweepv4",entity="st7ma784"):
     import pytorch_lightning
 
     if config is not None:
         config=config.__dict__
         dir=config.get("dir",dir)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweepv4",entity="st7ma784", save_dir=dir)
+        logtool= pytorch_lightning.loggers.WandbLogger( project=project,entity=entity, save_dir=dir)
 
     else: 
         #We've got no config, so we'll just use the default, and hopefully a trainAgent has been passed
         import wandb
         print("here")
-        run=wandb.init(project="6DIMCLIPTOKSweepv4",entity="st7ma784",name="6DIMCLIPTOKSweepv4",config=config)
-        logtool= pytorch_lightning.loggers.WandbLogger( project="6DIMCLIPTOKSweepv4",entity="st7ma784",experiment=run, save_dir=dir)
+        run=wandb.init(project=project,entity=entity,name=project,config=config)
+        logtool= pytorch_lightning.loggers.WandbLogger( project=project,entity=entity,experiment=run, save_dir=dir)
         config=run.config.as_dict()
     
     train(config,dir,devices,accelerator,Dataset,logtool)
@@ -52,6 +52,9 @@ def train(config={
         from modelVersions.trainclip_v45_var import LightningCLIPModule
     elif config["codeversion"]==1:
         from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
+    else:
+        print("CONFIG",config)
+        raise("No code version found")
     model=LightningCLIPModule( train_batch_size=config["batch_size"], **config)
     if dir is None:
         dir=config.get("dir",".")
@@ -129,6 +132,7 @@ def SlurmRun(trialconfig):
         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
         'source $CONDADIR/etc/profile.d/conda.sh',
+        'git pull',
         'conda activate open-ce',# ...and activate the conda environment
     ])
     #sub_commands.append("srun python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=1 --node_rank=0 --master_addr='
