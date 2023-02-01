@@ -131,7 +131,6 @@ def SlurmRun(trialconfig):
         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
         'source $CONDADIR/etc/profile.d/conda.sh',
-        'git pull',
         'conda activate open-ce',# ...and activate the conda environment
     ])
     #sub_commands.append("srun python3 -m torch.distributed.launch --nproc_per_node=1 --nnodes=1 --node_rank=0 --master_addr='
