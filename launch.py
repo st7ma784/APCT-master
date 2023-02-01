@@ -82,12 +82,12 @@ def train(config={
     print("Launching with precision",p)
     trainer=pytorch_lightning.Trainer(
             devices=devices,
-            auto_select_gpus=True,
+            #auto_select_gpus=True,
             accelerator=accelerator,
             max_epochs=40,
             #profiler="advanced",
             logger=logtool,
-            strategy="ddp",
+            strategy="dp",
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25,# Not supported for manual optimization
