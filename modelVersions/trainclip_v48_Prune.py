@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisionTransformer
+from clip.model import Transformer,LayerNorm,VisionTransformer, QuickGelu
 from functools import partial,reduce
 import clip
 from operator import iadd
@@ -575,9 +575,23 @@ class LightningCLIPModule(LightningModule):
 from core.pattern import EntropyHook
 
 
+def check_activation(layer):
+    acts = [nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGelu, nn.Tanh, nn.PReLU]
+    for ll in acts:
+        if isinstance(layer, ll):
+            return True
+    return False
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
+    
+    def add_block_hook(self, block_name, block):
+        for module_name, module in block.named_modules():
+            if check_activation(module):
+                self.features[block_name][module_name] = None
+                handle = module.register_forward_hook(self.hook(block_name, module_name))
+                self.handles.append(handle)
+
     def set_up(self):
         """
         Remove all previous hooks and register hooks for each of t
