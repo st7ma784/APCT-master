@@ -585,9 +585,9 @@ class PruneHook(EntropyHook):
         """
         self.remove()
         for block_name, block in self.model.named_modules():
-            if type(block) in [ResidualAttentionBlock]:
-                self.features[block_name] = {}
-                self.add_block_hook(block_name, block)
+            # if type(block) in [ResidualAttentionBlock]:
+            self.features[block_name] = {}
+            self.add_block_hook(block_name, block)
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 
