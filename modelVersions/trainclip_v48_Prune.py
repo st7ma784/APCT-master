@@ -60,14 +60,7 @@ def prune_module(param_to_prune, im_score, args):
             if not hasattr(module, name + '_mask'):
                 identity(module, name)
 from clip.model import ResidualAttentionBlock
-def prune_block(block, block_entropy, eta):
-    
-    # if isinstance(block, ConvBlock) or isinstance(block, LinearBlock):
-        # return prune_linear_transform_block(block, block_entropy, eta)
-    if isinstance(block, ResidualAttentionBlock):
-        return prune_Residual_Attention_block(block, block_entropy, eta)
-    # elif isinstance(block, LinearBlock):
-    #     return prune_linear_block(block, block_entropy, eta)
+
 def compute_importance(weight, channel_entropy, eta):
     """
     Compute the importance score based on weight and entropy of a channel
@@ -128,7 +121,7 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
                 }
     LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
-    print("block_entropy",block_entropy)
+    #print("block_entropy",block_entropy)
     if len(block_entropy) == 0:
         return {}
     num_dim = len(block_entropy.shape)                               # num of dimensions
@@ -467,7 +460,7 @@ class LightningCLIPModule(LightningModule):
         
         global_entropy = self.model_hookI.retrieve()
         print(global_entropy.keys())#dict_keys(['transformer.resblocks.0', 'transformer.resblocks.1', 'transformer.resblocks.2', 'transformer.resblocks.3', 'transformer.resblocks.4'])
-
+        global_entropy
         im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()]
         for imscoredict in im_scores:
             for (param_to_prune, im_score) in imscoredict.items():
@@ -608,4 +601,5 @@ class PruneHook(EntropyHook):
         return [self.process_layer(layer) for layer in block.values()]
 
     def retrieve(self):
+        print("self.features",self.features)
         return  {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
