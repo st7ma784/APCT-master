@@ -574,6 +574,7 @@ class LightningCLIPModule(LightningModule):
 
 from core.pattern import EntropyHook
 from functools import partial
+from random import random
 
 
 def get_pattern(input_var, Gamma):
