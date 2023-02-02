@@ -154,20 +154,18 @@ class LightningCLIPModule(LightningModule):
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
         
         im,captions= batch[0],batch[1]
-        try:
-            #make random choice of captions
-            captions=captions[:,torch.randint(0,5,(1,))]
-            logitsI,logitsT=self(im,captions)
-            lossim = self.lossim(logitsI, labels)
-            loss1 = self.loss1(logitsT.permute(1,2,0), labels)
-            loss = lossim+loss1
-            loss=loss/2
-            loss = loss.mean()
-            self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        except:
-            loss=None
-        finally:
-            return loss
+    
+        #make random choice of captions
+        captions=captions[:,torch.randint(0,5,(1,))]
+        logitsI,logitsT=self(im,captions)
+        lossim = self.lossim(logitsI, labels)
+        loss1 = self.loss1(logitsT.permute(1,2,0), labels)
+        loss = lossim+loss1
+        loss=loss/2
+        loss = loss.mean()
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+
+        return loss
 
             
     def configure_optimizers(self):
