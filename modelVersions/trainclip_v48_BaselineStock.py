@@ -144,8 +144,7 @@ class LightningCLIPModule(LightningModule):
         #
     def forward(self, im, captions1):
         image_features=self.encode_image(im)
-        print("captions Shape",captions1.shape)
-        caption_features1=self.encode_text(captions1)
+        caption_features1=self.encode_text(captions1.squeeze())
         return self.calculate_loss3(image_features, caption_features1)
 
         
