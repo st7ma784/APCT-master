@@ -573,19 +573,35 @@ class LightningCLIPModule(LightningModule):
 
 
 from core.pattern import EntropyHook
+from functools import partial
 
 
+def get_pattern(input_var, Gamma):
+
+     out=torch.histogramdd(input_var, Gamma, *, range=None, weight=None, density=False, out=None)
+     print(out)
+
+    return out.hist
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
     def add_block_hook(self, block_name, block):
-        for module_name, module in block.named_modules():
-            if type(module) in self.activations:
-                self.features[block_name][module_name] = None
-                handle = module.register_forward_hook(self.hook(block_name, module_name))
-                self.handles.append(handle)
+        #self.features[block_name].update({module_name: None for module_name, module in block.named_modules()})
+        handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, module_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
+
+    def hook(self, layer, input_var, output_var,block_name, module_name):
+        """
+        Count the frequency of each pattern
+        """
+        if random() < self.ratio:
+            input_var = input_var[0]
+            pattern = get_pattern(input_var, self.Gamma)
+            base=self.features[block_name].get(layer_name, np.zeros((self.num_pattern,) + pattern.shape[1:]))
+            for i in range(1 + len(self.Gamma)):
+                base[i] += (pattern == i).sum(axis=0)
+            self.features[block_name][layer_name] = base
     def set_up(self):
         """
         Remove all previous hooks and register hooks for each of t
