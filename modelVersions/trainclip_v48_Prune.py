@@ -590,7 +590,7 @@ class PruneHook(EntropyHook):
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
     def add_block_hook(self, block_name, block):
         #self.features[block_name].update({module_name: None for module_name, module in block.named_modules()})
-        handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, module_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
+        self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, module_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
 
     def hook(self, layer, input_var, output_var,block_name, module_name):
