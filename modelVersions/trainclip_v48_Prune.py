@@ -579,7 +579,7 @@ from random import random
 
 def get_pattern(input_var, Gamma):
 
-    out=torch.histogram(input_var, torch.tensor(Gamma, dtype=input_var.dtype, device=input_var.device), min=Gamma[0], max=Gamma[-1])
+    out=torch.histogram(input_var, torch.tensor(Gamma, dtype=input_var.dtype, device=input_var.device))
     print(input_var)
     print(Gamma)
     print(out)
