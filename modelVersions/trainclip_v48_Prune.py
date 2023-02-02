@@ -579,6 +579,8 @@ from functools import partial
 def get_pattern(input_var, Gamma):
 
     out=torch.histogramdd(input_var, Gamma)
+    print(input_var)
+    print(Gamma)
     print(out)
 
     return out.hist
