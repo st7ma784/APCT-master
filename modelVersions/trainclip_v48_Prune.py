@@ -592,7 +592,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros_like(self.Gamma))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), self.Gamma).hist
+            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros(self.Gamma.shape[0]-1))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), self.Gamma).hist
 
     def set_up(self):
         """
