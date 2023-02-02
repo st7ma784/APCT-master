@@ -600,7 +600,7 @@ class PruneHook(EntropyHook):
         """
         if random() < self.ratio:
             input_var = input_var[0]
-            pattern = get_pattern(input_var, self.Gamma)
+            pattern = get_pattern(input_var.clone(), self.Gamma)
             base=self.features[block_name].get(layer_name, np.zeros((self.num_pattern,) + pattern.shape[1:]))
             for i in range(1 + len(self.Gamma)):
                 base[i] += (pattern == i).sum(axis=0)
