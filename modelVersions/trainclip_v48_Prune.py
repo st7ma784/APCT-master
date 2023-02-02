@@ -578,8 +578,8 @@ from functools import partial
 
 def get_pattern(input_var, Gamma):
 
-     out=torch.histogramdd(input_var, Gamma, *, range=None, weight=None, density=False, out=None)
-     print(out)
+    out=torch.histogramdd(input_var, Gamma)
+    print(out)
 
     return out.hist
 class PruneHook(EntropyHook):
