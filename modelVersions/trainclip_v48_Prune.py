@@ -591,7 +591,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros_like(Gamma))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), torch.tensor(Gamma, dtype=torch.float32, device=input_var.device))
+            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros_like(self.Gamma))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), torch.tensor(self.Gamma, dtype=torch.float32, device=input_var.device))
 
     def set_up(self):
         """
@@ -599,9 +599,9 @@ class PruneHook(EntropyHook):
         :return:
         """
         self.remove()
+        self.features={block_name: {} for block_name, block in self.model.named_modules()}
+
         for block_name, block in self.model.named_modules():
-            # if type(block) in [ResidualAttentionBlock]:
-            self.features[block_name] = {}
             self.add_block_hook(block_name, block)
     def process_layer(self,layer):
         #Calculate neural entropy - 
