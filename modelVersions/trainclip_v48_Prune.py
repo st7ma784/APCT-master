@@ -575,19 +575,13 @@ class LightningCLIPModule(LightningModule):
 from core.pattern import EntropyHook
 
 
-def check_activation(layer):
-    acts = [nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU]
-    for ll in acts:
-        if isinstance(layer, ll):
-            return True
-    return False
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
-    
+        self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
     def add_block_hook(self, block_name, block):
         for module_name, module in block.named_modules():
-            if check_activation(module):
+            if type(module) in self.activations:
                 self.features[block_name][module_name] = None
                 handle = module.register_forward_hook(self.hook(block_name, module_name))
                 self.handles.append(handle)
@@ -600,7 +594,6 @@ class PruneHook(EntropyHook):
         self.remove()
         for block_name, block in self.model.named_modules():
             # if type(block) in [ResidualAttentionBlock]:
-            print(block_name)
             self.features[block_name] = {}
             self.add_block_hook(block_name, block)
     def process_layer(self,layer):
@@ -616,5 +609,4 @@ class PruneHook(EntropyHook):
         return [self.process_layer(layer) for layer in block.values()]
 
     def retrieve(self):
-        print("self.features",self.features)
         return  {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
