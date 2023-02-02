@@ -191,8 +191,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        self.model_hookI = PruneHook(self.encode_image,[0], 0.1)
-        self.model_hookT = PruneHook(self.encoder,[0], 0.1)
+        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1)
+        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
