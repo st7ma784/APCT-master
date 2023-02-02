@@ -581,6 +581,7 @@ class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
+        self.Gamma=torch.tensor(Gamma, dtype=torch.float32, device="cpu")
     def add_block_hook(self, block_name, block):
         #self.features[block_name].update({module_name: None for module_name, module in block.named_modules()})
         self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
@@ -591,7 +592,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros_like(self.Gamma))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), torch.tensor(self.Gamma, dtype=torch.float32, device=input_var.device))
+            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros_like(self.Gamma))+torch.histogram(input_var[0].clone().to(device="cpu",dtype=torch.float32), self.Gamma)
 
     def set_up(self):
         """
