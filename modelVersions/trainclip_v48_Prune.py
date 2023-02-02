@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisionTransformer, QuickGelu
+from clip.model import Transformer,LayerNorm,VisionTransformer, QuickGELU
 from functools import partial,reduce
 import clip
 from operator import iadd
@@ -576,7 +576,7 @@ from core.pattern import EntropyHook
 
 
 def check_activation(layer):
-    acts = [nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGelu, nn.Tanh, nn.PReLU]
+    acts = [nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU]
     for ll in acts:
         if isinstance(layer, ll):
             return True
