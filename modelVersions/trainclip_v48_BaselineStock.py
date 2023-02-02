@@ -159,8 +159,8 @@ class LightningCLIPModule(LightningModule):
         captions=captions[:,torch.randint(0,5,(1,))]
         logitsI,logitsT=self(im,captions)
         lossim = self.lossim(logitsI, labels)
-        print("logitsT SHAPE ",logitsT.shape)
-        loss1 = self.loss1(logitsT.permute(1,2,0), labels)
+        #print("logitsT SHAPE ",logitsT.shape)
+        loss1 = self.loss1(logitsT, labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
