@@ -594,13 +594,9 @@ class LightningCLIPModule(LightningModule):
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
-
-
 from core.pattern import EntropyHook
 from functools import partial
 from random import random
-
-
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
@@ -628,6 +624,7 @@ class PruneHook(EntropyHook):
 
         for block_name, block in self.model.named_modules():
             self.add_block_hook(block_name, block)
+
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
@@ -635,7 +632,6 @@ class PruneHook(EntropyHook):
         layer /= layer.sum(axis=0)
         #.25,.50,.25
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0)
-        
 
     def process_block_entropy(self, block):
         return [self.process_layer(layer) for layer in block.values()]
