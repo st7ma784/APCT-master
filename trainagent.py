@@ -29,7 +29,7 @@ def SlurmRun(args):
         comm="python3"
     else: 
         sub_commands.extend([
-                '#SBATCH --mem 42G',
+                '#SBATCH --mem=42G',
                 'export CONDADIR=/home/user/miniconda3',
                 'export NCCL_SOCKET_IFNAME=enp0s31f6',])
     sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
