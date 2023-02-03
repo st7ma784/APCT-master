@@ -51,7 +51,7 @@ if __name__ == '__main__':
     from functools import partial
     parser = argparse.ArgumentParser()
     parser.add_argument('--num_trials', type=int, default=-1, help='how many runs')
-    parser.add_argument('--dir', type=str, default=None, help='where to save')
+    parser.add_argument('--dir', type=str, default='/nobackup/projects/bdlan05/smander3/data', help='where to save')
     parser.add_argument('--sweep', type=str, default=None, help='Sweepid')
     parser.add_argument('--logdir', type=str,default=".", help='Where to save logs')
     parser.add_argument('--project', type=str, default="6DimCachespliteinSweep", help='wandb project')
