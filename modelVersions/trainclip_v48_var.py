@@ -322,8 +322,10 @@ class LightningCLIPModule(LightningModule):
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        captions=self.encode_text(batch[1][:,torch.randint(0,5,(1,))]) #run through main mode
-        self.model2.encode_text(batch[1][:,0])# to compare supervision model
+        c=batch[1][:,torch.randint(0,5,(1,))]
+
+        captions=self.encode_text(c) #run through main mode
+        self.model2.encode_text(c)# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))

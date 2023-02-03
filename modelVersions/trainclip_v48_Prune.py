@@ -396,11 +396,23 @@ class LightningCLIPModule(LightningModule):
             self.labels=[]
             self.features=[]
         self.Linearloss=[]
+
+    def calculate_lossStock(self, I, C1):
+  
+        #normalize image and text features
+        I = I / I.norm(dim=-1, keepdim=True)
+        C1 = C1 / C1.norm(dim=-1, keepdim=True)
+        #calculate logits
+        logits_per_image = I @ C1.T
+        logits_per_text = C1 @ I.T
+        #calculate loss
+        return logits_per_image*self.logit_scale.exp(), logits_per_text*self.logit_scale.exp()
     def validation_step(self,batch,*args):
         
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        i=self.encode_image(batch[0]).cpu() #run through main mode
+        image_features=self.encode_image(batch[0])
+        i=image_features.cpu() #run through main mode
         if self.current_epoch>0:
             testpred=self.classifier.predict(i.numpy())
             self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
@@ -419,8 +431,10 @@ class LightningCLIPModule(LightningModule):
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        self.encode_text(batch[1][:,0]) #run through main mode
-        self.model2.encode_text(batch[1][:,0])# to compare supervision model
+        c=batch[1][:,torch.randint(0,5,(1,))]
+
+        captions=self.encode_text(c) #run through main mode
+        self.model2.encode_text(c)# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
@@ -437,8 +451,17 @@ class LightningCLIPModule(LightningModule):
             self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
             self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
             return {"loss":np.mean(self.Linearloss)}
-        else:
-            return None
+        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
+
+        logitsI,logitsT=self.calculate_lossStock(image_features, captions)
+        lossim = self.lossim(logitsI, labels)
+        loss1 = self.loss1(logitsT, labels)
+        loss = lossim+loss1
+        loss=loss/2
+        loss = loss.mean()
+        self.log('val_loss-stock', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        return loss
+
     def validation_epoch_end(self, validation_step_outputs):
 
 
