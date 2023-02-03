@@ -615,7 +615,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros(self.Gamma.shape[0]-1))+torch.histogram(input_var[0].to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
+            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros(self.Gamma.shape[0]-1))+torch.histogram(input_var[0].detch().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
 
     def set_up(self):
         """
@@ -633,16 +633,9 @@ class PruneHook(EntropyHook):
         layer = layer.reshape(self.Gamma.shape[0]-1, -1)
         layer /= layer.sum(axis=0)
         #.25,.50,.25
-        s = torch.zeros(layer.shape[1:], device=layer.device)
-        print("s",s.shape)
-        for j in range(self.num_pattern):
-            s += -layer[j] * np.log(1e-8 + layer[j])
-            
-        print("old s", s)
-        s=torch.sum(-layer*torch.log(1e-8+layer),dim=0)
-        print("new s", s)
-        print("best s", torch.softmax(layer))
-        return s
+        return torch.sum(-layer*torch.log(1e-8+layer),dim=0)
+        
+
     def process_block_entropy(self, block):
         return [self.process_layer(layer) for layer in block.values()]
 
