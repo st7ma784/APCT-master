@@ -432,6 +432,7 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         c=batch[1][:,torch.randint(0,5,(1,))]
+        c=c.unsqueeze(1)
 
         captions=self.encode_text(c) #run through main mode
         self.model2.encode_text(c)# to compare supervision model
