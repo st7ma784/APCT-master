@@ -629,9 +629,10 @@ class PruneHook(EntropyHook):
             self.add_block_hook(block_name, block)
     def process_layer(self,layer):
         #Calculate neural entropy - 
-        # 
+        # 1000,2000,1000
         layer = layer.reshape(self.Gamma.shape[0]-1, -1)
         layer /= layer.sum(axis=0)
+        #.25,.50,.25
         s = torch.zeros(layer.shape[1:], device=layer.device)
         print("s",s.shape)
         for j in range(self.num_pattern):
@@ -640,6 +641,7 @@ class PruneHook(EntropyHook):
         print("old s", s)
         s=torch.sum(-layer*torch.log(1e-8+layer),dim=0)
         print("new s", s)
+        print("best s", torch.softmax(layer))
         return s
     def process_block_entropy(self, block):
         return [self.process_layer(layer) for layer in block.values()]
