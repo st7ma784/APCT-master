@@ -124,8 +124,11 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     #print("block_entropy",block_entropy)
     if len(block_entropy) == 0:
         return {}
-    num_dim = len(block_entropy.shape)                               # num of dimensions
+    #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
+    num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
     channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
+    #channel_entropy = block_entropy
+    
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
     lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
 
@@ -634,7 +637,7 @@ class PruneHook(EntropyHook):
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0)
 
     def process_block_entropy(self, block):
-        return [self.process_layer(layer) for layer in block.values()]
+        return torch.stack([self.process_layer(layer) for layer in block.values()]).mean()
 
     def retrieve(self):
         return  {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
