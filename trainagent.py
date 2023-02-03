@@ -28,10 +28,13 @@ def SlurmRun(args):
                 'export NCCL_SOCKET_IFNAME=ib0'])
         comm="python3"
     else: 
-        sub_commands.extend(['export CONDADIR=/home/user/miniconda3',
-                             'export NCCL_SOCKET_IFNAME=enp0s31f6',])
+        sub_commands.extend([
+                '#SBATCH --mem 42G',
+                'export CONDADIR=/home/user/miniconda3',
+                'export NCCL_SOCKET_IFNAME=enp0s31f6',])
     sub_commands.extend([ '#SBATCH --{}={}\n'.format(cmd, value) for  (cmd, value) in slurm_commands.items()])
     sub_commands.extend([
+
         'export SLURM_NNODES=$SLURM_JOB_NUM_NODES',
         'export wandb=9cf7e97e2460c18a89429deed624ec1cbfb537bc',
         'source $CONDADIR/etc/profile.d/conda.sh',
