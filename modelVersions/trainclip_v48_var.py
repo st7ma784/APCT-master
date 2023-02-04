@@ -303,6 +303,7 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         image_features=self.encode_image(batch[0])
+        i=image_features.detach().clone().cpu()
         #run through main mode
         if self.current_epoch>0:
             testpred=self.classifier.predict(image_features.cpu().numpy())
