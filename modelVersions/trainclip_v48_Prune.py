@@ -354,7 +354,7 @@ class LightningCLIPModule(LightningModule):
     def batch_HSIC2(self,K):
         #K is Layers x B x B
         a=torch.sum(K,dim=-1)
-        print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
+        #print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
         b=torch.sum(K,dim=-2)
         c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[-2] - 1),torch.sum(a*b,dim=1),alpha=2)
         #print(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1))
@@ -600,34 +600,33 @@ class LightningCLIPModule(LightningModule):
 from core.pattern import EntropyHook
 from functools import partial
 from random import random
+from collections import defaultdict
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32, device="cpu")
-    def add_block_hook(self, block_name, block):
-        #self.features[block_name].update({module_name: None for module_name, module in block.named_modules()})
-        self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
-
-    def hook(self, layer, input_var, output_var,block_name, layer_name):
-        """
-        Count the frequency of each pattern
-        """
-        if random() < self.ratio:
-            self.features[block_name][layer_name] =self.features[block_name].get(layer_name, torch.zeros(self.Gamma.shape[0]-1))+torch.histogram(input_var[0].detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
-
+  
     def set_up(self):
         """
         Remove all previous hooks and register hooks for each of t
         :return:
         """
         self.remove()
-        self.features={block_name: {} for block_name, block in self.model.named_modules()}
-
+        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros(self.Gamma.shape[0]-1, dtype=torch.float32, device="cpu")))
         for block_name, block in self.model.named_modules():
-            self.add_block_hook(block_name, block)
+            self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
+    def hook(self, layer, input_var, output_var,block_name, layer_name):
+        """
+        Count the frequency of each pattern
+        """
+        if random() < self.ratio:
+            #before = self.features[block_name][layer_name]
+            self.features[block_name][layer_name]= self.features[block_name][layer_name].add(torch.histogram(input_var[0].detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist)
+            #after = self.features[block_name][layer_name]
+            #print(f"Block: {block_name} Layer: {layer_name} Before: {before} After: {after}")
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
