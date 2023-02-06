@@ -637,6 +637,9 @@ class PruneHook(EntropyHook):
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0)
 
     def process_block_entropy(self, block):
+        #err here if block is empty
+        if len(block)==0:
+            return torch.zeros(1)
         return torch.stack([self.process_layer(layer) for layer in block.values()]).mean()
 
     def retrieve(self):
