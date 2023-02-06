@@ -643,4 +643,6 @@ class PruneHook(EntropyHook):
         return torch.stack([self.process_layer(layer) for layer in block.values()]).mean()
 
     def retrieve(self):
-        return  {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
+        output= {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
+        print(output)
+        return output
