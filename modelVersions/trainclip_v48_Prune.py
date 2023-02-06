@@ -623,10 +623,8 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            #before = self.features[block_name][layer_name]
-            self.features[block_name][layer_name]= self.features[block_name][layer_name].add(torch.histogram(input_var[0].detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist)
-            #after = self.features[block_name][layer_name]
-            #print(f"Block: {block_name} Layer: {layer_name} Before: {before} After: {after}")
+            self.features[block_name][layer_name]= torch.histogram(input_var[0].detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist.add(self.features[block_name][layer_name])
+          
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
@@ -637,11 +635,11 @@ class PruneHook(EntropyHook):
 
     def process_block_entropy(self, block):
         #err here if block is empty
-        if len(block)==0:
-            return torch.zeros(1)
+        if block.shape[0]==0:
+            return torch.zeros(s1)
         return torch.stack([self.process_layer(layer) for layer in block.values()]).mean()
 
     def retrieve(self):
-        output= {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
+        output= {block_key:self.process_block_entropies(block) for block_key,block in self.features.items()}
         print(output)
         return output
