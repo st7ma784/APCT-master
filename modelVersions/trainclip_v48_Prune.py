@@ -532,7 +532,7 @@ class PruneHook(EntropyHook):
 
         for block_name, block in self.model.named_modules():
             entropy=self.process_block_entropy(self.features.pop(block_name)) 
-            for module_name, module in filter(lambda (name,module): type(module) in self.activations, block.named_modules()):
+            for module_name, module in filter(lambda item : type(item[1]) in self.activations, block.named_modules()):
                 im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
                 prune_module(module,module_name, im_score, self.args)
         
