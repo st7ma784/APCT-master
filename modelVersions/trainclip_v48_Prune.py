@@ -499,8 +499,14 @@ class PruneHook(EntropyHook):
         
         counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
         print("counts",counts.shape)
-        counts=torch.bincount(hist,minlength=self.Gamma.shape[0]+1)
-        print("counts",counts.shape)
+        counts=batched_bincount(hist,dim=0,max_value=self.Gamma.shape[0]+1)
+        print("counts2",counts.shape)
+        out=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1)
+        print("out",out.shape)
+        counts=out.sum(dim=1)
+        print("counts3",counts.shape)
+
+        #counts=torch.bincount(hist,minlength=self.Gamma.shape[0]+1)
         self.features[layer_name]= counts.add(self.features[layer_name])
    
     def process_layer(self,layer):
@@ -537,6 +543,11 @@ class PruneHook(EntropyHook):
                 prune_module(param_to_prune, im_score, self.args)        
         '''
   
+def batched_bincount(x, dim, max_value):
+    target = torch.zeros(x.shape[0], max_value, dtype=x.dtype, device=x.device)
+    values = torch.ones_like(x)
+    target.scatter_add_(dim, x, values)
+    return target
 
 def prune_module(layer,name, im_score, args):
     
