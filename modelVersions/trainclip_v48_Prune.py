@@ -514,7 +514,7 @@ class PruneHook(EntropyHook):
             counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
             self.features[layer_name]= counts.add(self.features[layer_name])
    
-    def process_layer_entropy(self,layer):
+    def process_layer(self,layer):
 
         layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
@@ -528,7 +528,7 @@ class PruneHook(EntropyHook):
     def retrieve(self,eta=-1):
         if len(self.features.keys())==0:
             return {}
-        entropy=self.process_layer_entropy(self.features) 
+        entropy=self.process_block_entropy(self.features) 
         print("entropy",entropy.keys())
 
         #for block_name, block in self.model.named_modules():
