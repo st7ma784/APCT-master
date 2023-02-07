@@ -111,6 +111,7 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     """
     if block_entropy is None:
         return {}
+    print("Pruning Residual Attention Block", block_entropy)
 
     #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
     weightsDict={"attn":block.attn,
