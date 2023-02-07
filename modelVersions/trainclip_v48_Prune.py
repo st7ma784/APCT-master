@@ -301,7 +301,15 @@ class LightningCLIPModule(LightningModule):
                                                         C3.view(1,1,1,C3.shape[0],1,1,-1),
                                                         C4.view(1,1,1,1,C4.shape[0],1,-1),
                                                         C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6),dim=-1))
-    # @torch.jit.script
+    # rewrite calculate_loss3 to accept a list of args as *args 
+    def calculate_lossn(self, *args):
+        argdict = dict(enumerate(args))
+        ones=torch.ones(len(args),len(args))
+        ones=ones.scatter(0,torch.arange(len(args)),torch.tensor([i.shape[0] for i in args]))
+        termlist=[arg.view(ones[i]) for i,arg in argdict.items()] # does this really need to be ordered?
+        term1=reduce(torch.add,[torch.pow(i,2) for i in termlist])
+        term2=reduce(torch.add,termlist)
+        return 1-torch.sqrt(torch.sum(term1.sub_(term2, alpha=1/len(args)), dim=-1))
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
