@@ -496,15 +496,7 @@ class PruneHook(EntropyHook):
     def hook(self, layer, input_var, output_var, layer_name):
         input=output_var.view(output_var.shape[-1],-1)
         hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
-        
-        counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
-        print("counts",counts.shape)
-        counts=batched_bincount(hist,dim=0,max_value=self.Gamma.shape[0]+1)
-        print("counts2",counts.shape)
-        out=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1)
-        print("out",out.shape)
-        counts=out.sum(dim=1)
-        print("counts3",counts.shape)
+        counts=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1).sum(dim=1)
 
         #counts=torch.bincount(hist,minlength=self.Gamma.shape[0]+1)
         self.features[layer_name]= counts.add(self.features[layer_name])
