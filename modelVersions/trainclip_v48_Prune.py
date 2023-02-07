@@ -47,8 +47,9 @@ class LightningCLIPModule(LightningModule):
         self.save_hyperparameters()
         #print("learning_rate",learning_rate)
         self.args=kwargs
-        self.args["prune_eta"] = -1
-        self.args["method"] = "Hard"
+        setattr(self.args,"prune_eta",4)
+        setattr(self.args,"method","Hard")
+
 
         self.context_length = context_length
         self.encoder = Transformer(
