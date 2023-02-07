@@ -622,56 +622,56 @@ def compute_importance(weight, channel_entropy, eta):
 
     return importance_scores
 
-#ENTRY POINT
-def prune_Residual_Attention_block(block, block_entropy, eta):
-    """
-    :param block: RA block to be pruned
-    :param block_entropy: entropy of the block output (out_channels * H * W)
-    :param eta: hyper parameter.
-    :return:
-    """
-    if block_entropy is None:
-        return {}
-    print("Pruning Residual Attention Block", block_entropy)
+# #ENTRY POINT
+# def prune_Residual_Attention_block(block, block_entropy, eta):
+#     """
+#     :param block: RA block to be pruned
+#     :param block_entropy: entropy of the block output (out_channels * H * W)
+#     :param eta: hyper parameter.
+#     :return:
+#     """
+#     if block_entropy is None:
+#         return {}
+#     print("Pruning Residual Attention Block", block_entropy)
 
-    #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
-    # weightsDict={"attn":block.attn,
-    #             "LN1":block.ln_1, #layer norm
-    #             "MLP":block.mlp,    
-    #             "MLP_cfc":block.mlp.c_fc, #Linear layer
-    #             "MLP_gelu":block.mlp.gelu,
-    #             "MLP_c_proj":block.mlp.c_proj, #Linear layer
-    #             "LN2":block.ln_2, #layer norm
-    #             }
-    #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
-    #print("block_entropy",block_entropy)
-    #if block_entropy is empty tensor
+#     #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
+#     # weightsDict={"attn":block.attn,
+#     #             "LN1":block.ln_1, #layer norm
+#     #             "MLP":block.mlp,    
+#     #             "MLP_cfc":block.mlp.c_fc, #Linear layer
+#     #             "MLP_gelu":block.mlp.gelu,
+#     #             "MLP_c_proj":block.mlp.c_proj, #Linear layer
+#     #             "LN2":block.ln_2, #layer norm
+#     #             }
+#     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
+#     #print("block_entropy",block_entropy)
+#     #if block_entropy is empty tensor
 
-    #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
-    #num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
+#     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
+#     #num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
     
-    LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
-    channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-    print("channel_entropy",channel_entropy.shape)
-    #lt_im_score = compute_importance(weights, channel_entropy, eta)
-    lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
-    block_type = 'RABlock'
+#     LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
+#     channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
+#     print("channel_entropy",channel_entropy.shape)
+#     #lt_im_score = compute_importance(weights, channel_entropy, eta)
+#     lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
+#     block_type = 'RABlock'
 
-    linear_im_dict = {
-        (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
-    #lt_im_score_dict={K: compute_importance(V.weight.detach(), channel_entropy, eta) for K,V in weightsDict.items()}
-    #bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
-    #bn_im_score_dict={K: V.mean(dim=tuple(range(1, LTWeightsDict[K].dim()))) for K,V in lt_importance_dict.items()}
+#     linear_im_dict = {
+#         (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
+#     #lt_im_score_dict={K: compute_importance(V.weight.detach(), channel_entropy, eta) for K,V in weightsDict.items()}
+#     #bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
+#     #bn_im_score_dict={K: V.mean(dim=tuple(range(1, LTWeightsDict[K].dim()))) for K,V in lt_importance_dict.items()}
 
 
-    # im_dict = {
-    #     (block.LT, 'weight', block_type): lt_im_score,
-    #     (block.BN, 'weight', block_type): bn_im_score,
-    #     (block.BN, 'bias', block_type): bn_im_score
-    # }
-    # bn_weight_im_dict = {
-    #     (K,"weight",block_type):V for K,V in bn_im_score_dict.items()}
-    # bn_bias_im_dict = {
-    #     (K,"bias",block_type):V for K,V in bn_im_score_dict.items()}
+#     # im_dict = {
+#     #     (block.LT, 'weight', block_type): lt_im_score,
+#     #     (block.BN, 'weight', block_type): bn_im_score,
+#     #     (block.BN, 'bias', block_type): bn_im_score
+#     # }
+#     # bn_weight_im_dict = {
+#     #     (K,"weight",block_type):V for K,V in bn_im_score_dict.items()}
+#     # bn_bias_im_dict = {
+#     #     (K,"bias",block_type):V for K,V in bn_im_score_dict.items()}
     
-    return linear_im_dict
+#     return linear_im_dict
