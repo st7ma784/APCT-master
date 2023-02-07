@@ -178,6 +178,7 @@ class LightningCLIPModule(LightningModule):
         term1=reduce(torch.add,[torch.pow(i,2) for i in termlist])
         term2=reduce(torch.add,termlist)
         return 1-torch.sqrt(torch.sum(term1.sub_(term2, alpha=1/len(args)), dim=-1))
+
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
@@ -535,7 +536,7 @@ class PruneHook(EntropyHook):
         if leng==0:
             return torch.zeros(1)
         #print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()],dim=0).mean(dim=0))
-        print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
+        #print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
         return reduce(torch.add,map(self.process_layer,block.values()))/leng
 
     def retrieve(self):
