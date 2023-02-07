@@ -48,6 +48,8 @@ class LightningCLIPModule(LightningModule):
         #print("learning_rate",learning_rate)
         self.args=kwargs
         self.args["prune_eta"] = -1
+        self.args["method"] = "Hard"
+
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
@@ -63,8 +65,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1)
-        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1)
+        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1, **self.args)
+        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1, **self.args)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
@@ -364,21 +366,21 @@ class LightningCLIPModule(LightningModule):
         del self.model2
         
         global_entropy = self.model_hookI.retrieve()
-        print(global_entropy.keys())#dict_keys(['transformer.resblocks.0', 'transformer.resblocks.1', 'transformer.resblocks.2', 'transformer.resblocks.3', 'transformer.resblocks.4'])
-        global_entropy
-        im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(n,m) for n,m in self.encode_image.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()]
-        for imscoredict in im_scores:
-            for (param_to_prune, im_score) in imscoredict.items():
-                prune_module(param_to_prune, im_score, self.args)
+        
+
+        # im_scores =map(lambda name, block: prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]), filter(lambda name,block: isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys(), self.encode_image.named_modules()[:-1]))
+        # for imscoredict in im_scores:
+        #     for (param_to_prune, im_score) in imscoredict.items():
+        #         prune_module(param_to_prune, im_score, self.args)
         #then purun accordingly 
         self.model_hookI.remove()
 
 
         global_entropy = self.model_hookT.retrieve()
-        im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()]
-        for imscoredict in im_scores:
-            for (param_to_prune, im_score) in imscoredict.items():
-                prune_module(param_to_prune, im_score, self.args)
+        # im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()]
+        # for imscoredict in im_scores:
+        #     for (param_to_prune, im_score) in imscoredict.items():
+        #         prune_module(param_to_prune, im_score, self.args)
         #then purun accordingly 
         self.model_hookT.remove()
      
@@ -491,113 +493,89 @@ from collections import defaultdict
 
 
 class PruneHook(EntropyHook):
-    def __init__(self, model, Gamma, ratio=1):
+    def __init__(self, model, Gamma, ratio=1, **kwargs):
         super().__init__(model, Gamma, ratio)
         self.device="cuda"
-
+        self.kwargs=kwargs
         self.activations =set([nn.Linear])#set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
   
     def set_up(self):
-        """
-        Remove all previous hooks and register hooks for each of t
-        :return:
-        """
+        
         self.remove()
         self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device)))
         for block_name, block in self.model.named_modules():
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var,block_name, layer_name):
-        """
-        Count the frequency of each pattern
-        """
-        #
-        print(output_var[0].shape)
+        
         if random() < self.ratio:
-            #print(input_var[0].device)
-            #print(self.Gamma.device)
-            #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
-            #we want to convert this to BxF,LayerWidth
             input=input_var[0].view(input_var[0].shape[2],-1)
-            #shape is F, B*LayerWidth
-            #broadcast to gamma, so shape is F, B*LayerWidth, Gamma.shape[0]+1
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
-            #find count of each index along dim 0
-            #print("hist",hist.shape)# F, B*LayerWidth
-            
             counts=torch.stack([torch.bincount(hist[i,:]) for i in range(hist.shape[0])])
-            #print(counts.shape)# F, Len(Gamma)+1
             self.features[block_name][layer_name]= counts.add(self.features[block_name][layer_name])
-        #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
+   
     def process_layer(self,layer):
-        #Calculate neural entropy - 
-        # 1000,2000,1000
-        #print("layer",layer.shape)
 
         layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
-        #.25,.50,.25
-        #print(torch.sum(-layer*torch.log(1e-8+layer),dim=0).shape)
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0) # changed from 0 
 
-    def process_block_entropy(self, block):
-        #err here if block is empty
-        
-        leng=len(block)
-        if leng==0:
+    def process_block_entropy(self, blockdict):
+        if len(blockdict)==0:
             return torch.zeros(1)
-        #print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()],dim=0).mean(dim=0))
-        #print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
-        return {k:self.process_layer(v) for k,v in block.items()}
+        return {k:self.process_layer(v) for k,v in blockdict.items()}
 
-    def retrieve(self):
+    def retrieve(self,eta=-1):
         if len(self.features.keys())==0:
             return {}
-        output= {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
-        #output= {self.process_block_entropies(block) for block_key,block in self.features.items()}
-        return output
 
+        for block_name, block in self.model.named_modules():
+            entropy=self.process_block_entropy(self.features.pop(block_name)) 
+            for module_name, module in filter(lambda name,module: type(module) in self.activations, block.named_modules()):
+                im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
+                prune_module(module,module_name, im_score, self.args)
+        
+        '''
+                
+            LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
+            channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
+            print("channel_entropy",channel_entropy.shape)
+            #lt_im_score = compute_importance(weights, channel_entropy, eta)
+            lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
+            for (param_to_prune, im_score) in lt_importance_dict:
+                prune_module(param_to_prune, im_score, self.args)
+        
+        
+        '''
 
    
 
-def prune_module(param_to_prune, im_score, args):
-    module, name, block = param_to_prune
-    cur_param = getattr(module, name)
+def prune_module(layer,name, im_score, args):
+    
+    cur_param = getattr(layer, name)
     num_dims = cur_param.dim()
     if args.method == 'LnStructured':
         if num_dims > 1:
-            ln_structured(module, name, args.amount, 2, dim=0, importance_scores=im_score.cuda())
+            ln_structured(layer, name, args.amount, 2, dim=0, importance_scores=im_score.cuda())
         else:
-            l1_unstructured(module, name, args.amount, importance_scores=im_score.cuda())
+            l1_unstructured(layer, name, args.amount, importance_scores=im_score.cuda())
     elif args.method == 'RandomStructured':
-        random_structured(module, name, args.amount, dim=0)
+        random_structured(layer, name, args.amount, dim=0)
     elif args.method == 'Hard':
         slc = [slice(None)] * num_dims
-        if hasattr(module, name + '_mask'):
-            keep_channel = getattr(module, name + '_mask')[(slice(None, ),) + (0,) * (num_dims - 1)] != 0
-            slc[0] = keep_channel
         tensor_to_pru = im_score[slc]
 
         hard_ind = tensor_to_pru[(slice(None, ),) + (0,) * (num_dims - 1)]
-        if block == 'ConvBlock':
-            num_filters = torch.sum(hard_ind < args.conv_pru_bound).to(torch.int)
-        elif block == 'LinearBlock' or block=="RABlock":
-            num_filters = torch.sum(hard_ind < args.fc_pru_bound).to(torch.int)
-        else:
-            raise NameError("Invalid Block for pruning")
+        num_filters = torch.sum(hard_ind < args.fc_pru_bound).to(torch.int)
         if num_filters == 0:
-            identity(module, name)
+            identity(layer, name)
         elif 0 < num_filters < len(tensor_to_pru):
             if num_dims > 1:
-                ln_structured(module, name, int(num_filters), 2, dim=0, importance_scores=im_score.cuda())
+                ln_structured(layer, name, int(num_filters), 2, dim=0, importance_scores=im_score.cuda())
             else:
-                l1_unstructured(module, name, int(num_filters), importance_scores=im_score.cuda())
-        else:
-            Warning("Amount to prune should be less than number of params, "
-                             "got {0} and {1}".format(num_filters, len(tensor_to_pru)))
-            if not hasattr(module, name + '_mask'):
-                identity(module, name)
+                l1_unstructured(layer, name, int(num_filters), importance_scores=im_score.cuda())
+       
 from clip.model import ResidualAttentionBlock
 
 def compute_importance(weight, channel_entropy, eta):
@@ -621,8 +599,7 @@ def compute_importance(weight, channel_entropy, eta):
         weight = weight.t()
     assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
     weight = abs(weight)
-    e_new_shape = (-1, ) + (1, ) * (weight.dim() - 1)
-    channel_entropy = torch.tensor(channel_entropy).view(e_new_shape).cuda()
+
     if eta == -1:
         importance_scores = channel_entropy * torch.ones_like(weight)
     elif eta == 0:
@@ -644,7 +621,7 @@ def compute_importance(weight, channel_entropy, eta):
 
     return importance_scores
 
-
+#ENTRY POINT
 def prune_Residual_Attention_block(block, block_entropy, eta):
     """
     :param block: RA block to be pruned
@@ -657,31 +634,33 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     print("Pruning Residual Attention Block", block_entropy)
 
     #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
-    weightsDict={"attn":block.attn,
-                "LN1":block.ln_1, #layer norm
-                "MLP":block.mlp,    
-                "MLP_cfc":block.mlp.c_fc, #Linear layer
-                "MLP_gelu":block.mlp.gelu,
-                "MLP_c_proj":block.mlp.c_proj, #Linear layer
-                "LN2":block.ln_2, #layer norm
-                }
-    LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
+    # weightsDict={"attn":block.attn,
+    #             "LN1":block.ln_1, #layer norm
+    #             "MLP":block.mlp,    
+    #             "MLP_cfc":block.mlp.c_fc, #Linear layer
+    #             "MLP_gelu":block.mlp.gelu,
+    #             "MLP_c_proj":block.mlp.c_proj, #Linear layer
+    #             "LN2":block.ln_2, #layer norm
+    #             }
     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
     #print("block_entropy",block_entropy)
     #if block_entropy is empty tensor
 
     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
     #num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
+    
+    LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
     channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-    #channel_entropy = block_entropy
     print("channel_entropy",channel_entropy.shape)
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
     lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
+    block_type = 'RABlock'
 
+    linear_im_dict = {
+        (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
     #lt_im_score_dict={K: compute_importance(V.weight.detach(), channel_entropy, eta) for K,V in weightsDict.items()}
     #bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
     #bn_im_score_dict={K: V.mean(dim=tuple(range(1, LTWeightsDict[K].dim()))) for K,V in lt_importance_dict.items()}
-    block_type = 'RABlock'
 
 
     # im_dict = {
@@ -689,8 +668,6 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     #     (block.BN, 'weight', block_type): bn_im_score,
     #     (block.BN, 'bias', block_type): bn_im_score
     # }
-    linear_im_dict = {
-        (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
     # bn_weight_im_dict = {
     #     (K,"weight",block_type):V for K,V in bn_im_score_dict.items()}
     # bn_bias_im_dict = {
