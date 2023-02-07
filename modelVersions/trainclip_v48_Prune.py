@@ -513,7 +513,7 @@ class PruneHook(EntropyHook):
             
             counts=torch.stack([torch.bincount(hist[i,:]) for i in range(hist.shape[0])])
             print(counts.shape)
-            self.features[block_name][layer_name]= hist.add(self.features[block_name][layer_name])
+            self.features[block_name][layer_name]= counts.add(self.features[block_name][layer_name])
         #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
     def process_layer(self,layer):
         #Calculate neural entropy - 
