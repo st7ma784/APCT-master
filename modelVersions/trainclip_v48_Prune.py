@@ -502,8 +502,8 @@ class PruneHook(EntropyHook):
         """
         #
         if random() < self.ratio:
-            print(input_var[0].device)
-            print(self.Gamma.device)
+            #print(input_var[0].device)
+            #print(self.Gamma.device)
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
             input=input_var[0].view(input_var[0].shape[2],-1)
@@ -512,16 +512,18 @@ class PruneHook(EntropyHook):
             
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
             #find count of each index along dim 0
-            print("hist",hist.shape)# F, B*LayerWidth
+            #print("hist",hist.shape)# F, B*LayerWidth
             
             counts=torch.stack([torch.bincount(hist[i,:]) for i in range(hist.shape[0])])
-            print(counts.shape)
+            #print(counts.shape)# F, Len(Gamma)+1
             self.features[block_name][layer_name]= counts.add(self.features[block_name][layer_name])
         #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
-        layer = layer.reshape(self.Gamma.shape[0]-1, -1)
+        print("layer",layer.shape)
+
+        layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
         #.25,.50,.25
         return torch.sum(-layer*torch.log(1e-8+layer),dim=1) # changed from 0 
