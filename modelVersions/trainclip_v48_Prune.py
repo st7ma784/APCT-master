@@ -502,12 +502,12 @@ class PruneHook(EntropyHook):
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
         print("input_var",input_var[0].shape)
-        input=input_var[0].view(-1,input_var[0].shape[1])
+        input=input_var[0].view(input_var[0].shape[0],-1)
         #t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True)
          
         if random() < self.ratio:
             print("input_var",input.shape)
-            hist=torch.histogram(input.detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
+            hist=torch.histogram(input.t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
             print("hist",hist.shape)
             self.features[block_name][layer_name]= hist.add(self.features[block_name][layer_name])
         #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
