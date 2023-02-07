@@ -509,9 +509,9 @@ class PruneHook(EntropyHook):
 
     def hook(self, layer, input_var, output_var,block_name, layer_name):
         #print(layer.__dir__())
-        print(layer._get_name())
-        print(layer_name)
-        print(block_name)
+        print("layer get name" , layer._get_name())
+        print("layer name", layer_name)
+        print("block",block_name)
         if random() < self.ratio:
             input=output_var.view(output_var.shape[-1],-1)
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
