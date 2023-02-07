@@ -503,7 +503,7 @@ class PruneHook(EntropyHook):
     def set_up(self):
         
         self.remove()
-        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device)))
+        self.features=defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device))
         for block_name, block in self.model.named_modules():
             self.handles.extend( [module.register_forward_hook(partial(self.hook, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
