@@ -534,7 +534,7 @@ class PruneHook(EntropyHook):
         #for block_name, block in self.model.named_modules():
         for (module_name, module) in filter(lambda item : type(item[1]) in self.activations and random()<self.ratio, self.model.named_modules()):
             im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
-            prune_module(module,module_name, im_score, self.args)
+            prune_module(module,"weight", im_score, self.args)
             #now consider pruning the near by batch norm layers 
         
         
