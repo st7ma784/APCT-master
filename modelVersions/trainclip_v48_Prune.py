@@ -46,10 +46,7 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         #print("learning_rate",learning_rate)
-        self.args=kwargs
-        self.args.prune_eta=4
-        self.args.metho="Hard"
-
+        
 
         self.context_length = context_length
         self.encoder = Transformer(
@@ -66,8 +63,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1, **self.args)
-        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1, **self.args)
+        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1, method="Hard", prune_eta=4, amount=4,fc_pru_bound=-1)
+        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1, method="Hard", prune_eta=4, amount=4,fc_pru_bound=-1)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
@@ -558,19 +555,19 @@ def prune_module(layer,name, im_score, args):
     
     cur_param = getattr(layer, name)
     num_dims = cur_param.dim()
-    if args.method == 'LnStructured':
+    if args["method"] == 'LnStructured':
         if num_dims > 1:
-            ln_structured(layer, name, args.amount, 2, dim=0, importance_scores=im_score.cuda())
+            ln_structured(layer, name, args["amount"], 2, dim=0, importance_scores=im_score.cuda())
         else:
-            l1_unstructured(layer, name, args.amount, importance_scores=im_score.cuda())
-    elif args.method == 'RandomStructured':
-        random_structured(layer, name, args.amount, dim=0)
-    elif args.method == 'Hard':
+            l1_unstructured(layer, name, args["amount"], importance_scores=im_score.cuda())
+    elif args["method"] == 'RandomStructured':
+        random_structured(layer, name, args["amount"], dim=0)
+    elif args["method"] == 'Hard':
         slc = [slice(None)] * num_dims
         tensor_to_pru = im_score[slc]
 
         hard_ind = tensor_to_pru[(slice(None, ),) + (0,) * (num_dims - 1)]
-        num_filters = torch.sum(hard_ind < args.fc_pru_bound).to(torch.int)
+        num_filters = torch.sum(hard_ind < args["fc_pru_bound"]).to(torch.int)
         if num_filters == 0:
             identity(layer, name)
         elif 0 < num_filters < len(tensor_to_pru):
