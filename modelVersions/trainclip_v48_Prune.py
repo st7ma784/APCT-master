@@ -660,7 +660,7 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
 
     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
     num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
-    channel_entropy = block_entropy.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
+    channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
     #channel_entropy = block_entropy
     print("channel_entropy",channel_entropy.shape)
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
