@@ -644,7 +644,7 @@ class PruneHook(EntropyHook):
         layer = layer.reshape(self.Gamma.shape[0]-1, -1)
         layer /= layer.sum(axis=0)
         #.25,.50,.25
-        return torch.sum(-layer*torch.log(1e-8+layer),dim=0)
+        return torch.sum(-layer*torch.log(1e-8+layer),dim=1)
 
     def process_block_entropy(self, block):
         #err here if block is empty
@@ -654,7 +654,7 @@ class PruneHook(EntropyHook):
             return torch.zeros(1)
         print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()]).mean())
         print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
-        return reduce(torch.add,map(self.process_layer,block.values()))/leng
+        return reduce(torch.add,map(self.process_layer,block.values())).squeeze()/leng
 
     def retrieve(self):
         if len(self.features.keys())==0:
