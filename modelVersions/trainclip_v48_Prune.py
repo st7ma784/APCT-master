@@ -76,7 +76,9 @@ def compute_importance(weight, channel_entropy, eta):
                 else:   eta * channel_entropy * weight
     :return:    The importance_scores
     """
-    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1 "weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
+    print("weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
+)
+    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
     weight = abs(weight)
     e_new_shape = (-1, ) + (1, ) * (weight.dim() - 1)
     channel_entropy = torch.tensor(channel_entropy).view(e_new_shape).cuda()
@@ -646,10 +648,12 @@ class PruneHook(EntropyHook):
 
     def process_block_entropy(self, block):
         #err here if block is empty
-        print(block)
+        
         leng=len(block)
         if leng==0:
             return torch.zeros(1)
+        print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()]).mean())
+        print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
         return reduce(torch.add,map(self.process_layer,block.values()))/leng
 
     def retrieve(self):
