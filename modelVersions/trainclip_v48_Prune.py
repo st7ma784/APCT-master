@@ -483,7 +483,7 @@ class PruneHook(EntropyHook):
         super().__init__(model, Gamma, ratio)
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=device)
-
+        self.device=device
   
     def set_up(self):
         """
@@ -491,7 +491,7 @@ class PruneHook(EntropyHook):
         :return:
         """
         self.remove()
-        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device="cpu")))
+        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device)))
         for block_name, block in self.model.named_modules():
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
