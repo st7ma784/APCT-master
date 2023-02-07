@@ -509,7 +509,7 @@ class PruneHook(EntropyHook):
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var,block_name, layer_name):
-        print(layer.__dir__())
+        #print(layer.__dir__())
         if random() < self.ratio:
             input=output_var.view(output_var.shape[-1],-1)
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
