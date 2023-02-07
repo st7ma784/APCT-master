@@ -505,18 +505,16 @@ class PruneHook(EntropyHook):
         self.remove()
         self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device)))
         for block_name, block in self.model.named_modules():
+            print(block_name)
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var,block_name, layer_name):
         #print(layer.__dir__())
-        print("layer get name" , layer._get_name())
-        print("layer name", layer_name)
-        print("block",block_name)
         if random() < self.ratio:
             input=output_var.view(output_var.shape[-1],-1)
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
             counts=torch.stack([torch.bincount(hist[i,:]) for i in range(hist.shape[0])])
-            self.features[block_name][layer.name]= counts.add(self.features[block_name][layer.name])
+            self.features[block_name][layer_name]= counts.add(self.features[block_name][layer_name])
    
     def process_layer(self,layer):
 
