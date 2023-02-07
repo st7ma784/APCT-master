@@ -500,7 +500,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         #
-        if random < self.ratio:
+        if random() < self.ratio:
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
             input=input_var[0].view(input_var[0].shape[2],-1)
