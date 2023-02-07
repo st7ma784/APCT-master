@@ -642,10 +642,8 @@ class PruneHook(EntropyHook):
         return reduce(torch.add,map(self.process_layer,block.values())).mean()/leng
 
     def retrieve(self):
-        output={}
-        dictreduce=partial(lambda Dic,k,v: Dic.update(k,v),Dic=output)
         if len(self.features.keys())==0:
-            return output
-        output=reduce( lambda k,v: dictreduce(k,self.process_block_entropy(v)), self.features.items())
+            return {}
+        output= {block_key:self.process_block_entropy(block) for block_key,block in self.features.items()}
         #output= {self.process_block_entropies(block) for block_key,block in self.features.items()}
         return output
