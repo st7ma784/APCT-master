@@ -579,7 +579,6 @@ def prune_module(layer,name, im_score, args):
             else:
                 l1_unstructured(layer, name, int(num_filters), importance_scores=im_score.cuda())
        
-from clip.model import ResidualAttentionBlock
 
 def compute_importance(weight, channel_entropy, eta):
     """
@@ -600,11 +599,12 @@ def compute_importance(weight, channel_entropy, eta):
     )
     if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] == weight.t().shape[0]:
         weight = weight.t()
+        print("Transposing weight")
     assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
     weight = abs(weight)
 
     if eta == -1:
-        importance_scores = channel_entropy * torch.ones_like(weight)
+        importance_scores = weight
     elif eta == 0:
         importance_scores = weight
     elif eta == 2:
