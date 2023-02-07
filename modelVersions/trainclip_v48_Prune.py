@@ -644,7 +644,7 @@ class PruneHook(EntropyHook):
         layer = layer.reshape(self.Gamma.shape[0]-1, -1)
         layer /= layer.sum(axis=0)
         #.25,.50,.25
-        return torch.sum(-layer*torch.log(1e-8+layer),dim=1)
+        return torch.sum(-layer*torch.log(1e-8+layer),dim=1) # changed from 0 
 
     def process_block_entropy(self, block):
         #err here if block is empty
