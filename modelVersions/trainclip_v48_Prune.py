@@ -635,7 +635,8 @@ class PruneHook(EntropyHook):
 
     def process_block_entropy(self, block):
         #err here if block is empty
-        leng=len(block.keys())
+        print(block)
+        leng=len(block)
         if leng==0:
             return torch.zeros(1)
         return reduce(torch.add,map(self.process_layer,block.values())).mean()/leng
