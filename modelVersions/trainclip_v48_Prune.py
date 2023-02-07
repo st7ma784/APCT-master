@@ -501,6 +501,7 @@ class PruneHook(EntropyHook):
         """
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
+        print("input_var",input_var[0].shape)
         input=input_var[0].view(-1,input_var[0].shape[1])
         #t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True)
          
