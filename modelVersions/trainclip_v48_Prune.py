@@ -574,9 +574,9 @@ def prune_module(layer,name, im_score, args):
             identity(layer, name)
         elif 0 < num_filters < len(tensor_to_pru):
             if num_dims > 1:
-                ln_structured(layer, name, int(num_filters), 2, dim=0, importance_scores=im_score.cuda())
+                ln_structured(layer, name, int(num_filters), 2, dim=0, importance_scores=im_score)
             else:
-                l1_unstructured(layer, name, int(num_filters), importance_scores=im_score.cuda())
+                l1_unstructured(layer, name, int(num_filters), importance_scores=im_score)
        
 
 def compute_importance(weight, channel_entropy, eta):
