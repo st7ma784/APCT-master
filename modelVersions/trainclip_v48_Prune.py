@@ -480,16 +480,6 @@ from functools import partial
 from random import random
 from collections import defaultdict
 
-
-
-
-
-
-
-
-
-
-
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1, **kwargs):
         super().__init__(model, Gamma, ratio)
@@ -499,21 +489,17 @@ class PruneHook(EntropyHook):
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
   
     def set_up(self):
-        
         self.remove()
         self.features=defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device))
         self.handles.extend( [module.register_forward_hook(partial(self.hook, layer_name=module_name)) for module_name, module in self.model.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var, layer_name):
-        #print(layer.__dir__())
-        #if random() < self.ratio:
         input=output_var.view(output_var.shape[-1],-1)
         hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
         counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
         self.features[layer_name]= counts.add(self.features[layer_name])
    
     def process_layer(self,layer):
-
         layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0) # changed from 0 
@@ -544,12 +530,9 @@ class PruneHook(EntropyHook):
             #lt_im_score = compute_importance(weights, channel_entropy, eta)
             lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
             for (param_to_prune, im_score) in lt_importance_dict:
-                prune_module(param_to_prune, im_score, self.args)
-        
-        
+                prune_module(param_to_prune, im_score, self.args)        
         '''
-
-   
+  
 
 def prune_module(layer,name, im_score, args):
     
@@ -578,22 +561,7 @@ def prune_module(layer,name, im_score, args):
        
 
 def compute_importance(weight, channel_entropy, eta):
-    """
-    Compute the importance score based on weight and entropy of a channel
-    :param weight:  Weight of the module, shape as:
-                    ConvBlock: in_channels * out_channels * kernel_size_1 * kernel_size_2
-                    LinearBlock: in_channels * out_channels
-    :param channel_entropy: The averaged entropy of each channel, shape as in_channels * 1 * (1 * 1)
-    :param eta: the importance of entropy in pruning,
-                -1:     hard prune without using weight
-                0:      prune by weight
-                1:      prune by channel_entropy
-                2: weight * entropy
-                else:   eta * channel_entropy * weight
-    :return:    The importance_scores
-    """
-    print("weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
-    )
+
     if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] == weight.t().shape[0]:
         weight = weight.t()
         print("Transposing weight")
