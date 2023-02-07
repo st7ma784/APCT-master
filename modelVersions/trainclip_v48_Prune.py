@@ -605,7 +605,7 @@ def compute_importance(weight, channel_entropy, eta):
     """
     print("weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
     )
-    if not weight.shape[0] == channel_entropy.shape[0] and weight.shape[1] == channel_entropy.shape[0]:
+    if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] in weight.shape.values():
         weight = weight.transpose(0,1)
     assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
     weight = abs(weight)
