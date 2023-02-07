@@ -491,7 +491,7 @@ class PruneHook(EntropyHook):
         :return:
         """
         self.remove()
-        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros(self.Gamma.shape[0]-1, dtype=torch.float32, device="cpu")))
+        self.features=defaultdict(lambda: defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device="cpu")))
         for block_name, block in self.model.named_modules():
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
@@ -499,16 +499,20 @@ class PruneHook(EntropyHook):
         """
         Count the frequency of each pattern
         """
+        #
+        if random < self.ratio:
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
-        print("input_var",input_var[0].shape)
-        input=input_var[0].view(input_var[0].shape[0],-1)
-        #t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True)
-         
-        if random() < self.ratio:
-            print("input_var",input.shape)
-            hist=torch.histogram(input.t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
-            print("hist",hist.shape)
+            input=input_var[0].view(input_var[0].shape[2],-1)
+            #shape is F, B*LayerWidth
+            #broadcast to gamma, so shape is F, B*LayerWidth, Gamma.shape[0]+1
+            
+            hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
+            #find count of each index along dim 0
+            print("hist",hist.shape)# F, B*LayerWidth
+            
+            counts=torch.stack([torch.bincount(hist[:])])
+            print(counts.shape)
             self.features[block_name][layer_name]= hist.add(self.features[block_name][layer_name])
         #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
     def process_layer(self,layer):
