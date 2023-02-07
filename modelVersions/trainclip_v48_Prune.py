@@ -654,7 +654,7 @@ class PruneHook(EntropyHook):
             return torch.zeros(1)
         print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()]))
         print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
-        return reduce(torch.add,map(self.process_layer,block.values())).squeeze()/leng
+        return reduce(torch.add,map(self.process_layer,block.values()))/leng
 
     def retrieve(self):
         if len(self.features.keys())==0:
