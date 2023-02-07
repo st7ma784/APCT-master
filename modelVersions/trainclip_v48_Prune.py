@@ -605,7 +605,7 @@ def compute_importance(weight, channel_entropy, eta):
     """
     print("weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
     )
-    if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] in weight.shape.values():
+    if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] == weight.t().shape[0]:
         weight = weight.transpose(0,1)
     assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
     weight = abs(weight)
@@ -659,7 +659,7 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     #if block_entropy is empty tensor
 
     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
-    num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
+    #num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
     channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
     #channel_entropy = block_entropy
     print("channel_entropy",channel_entropy.shape)
