@@ -504,12 +504,11 @@ class PruneHook(EntropyHook):
         if random() < self.ratio:
             #print(input_var[0].device)
             #print(self.Gamma.device)
-        #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
-        #we want to convert this to BxF,LayerWidth
+            #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
+            #we want to convert this to BxF,LayerWidth
             input=input_var[0].view(input_var[0].shape[2],-1)
             #shape is F, B*LayerWidth
             #broadcast to gamma, so shape is F, B*LayerWidth, Gamma.shape[0]+1
-            
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
             #find count of each index along dim 0
             #print("hist",hist.shape)# F, B*LayerWidth
@@ -618,7 +617,7 @@ def compute_importance(weight, channel_entropy, eta):
     elif eta == 2:
         importance_scores = channel_entropy * weight
     elif eta == 3:
-        importance_scores =1 / (1 / (channel_entropy +1e-8) + 1 / (weight+ 1e-8))
+        importance_scores =1 / (torch.div(1,channel_entropy) +torch.div(1,weight))
     elif eta == 4:
         normed_entropy = (channel_entropy - channel_entropy.mean()) / channel_entropy.std()
         normed_weight = (weight - weight.mean()) / weight.std()
