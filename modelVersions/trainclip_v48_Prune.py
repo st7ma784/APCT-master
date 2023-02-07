@@ -508,7 +508,7 @@ class PruneHook(EntropyHook):
             self.handles.extend( [module.register_forward_hook(partial(self.hook, block_name=block_name, layer_name=module_name)) for module_name, module in block.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var,block_name, layer_name):
-        print(layer.__dir__())
+        #print(layer.__dir__())
         print(layer._get_name())
         print(layer_name)
         print(block_name)
