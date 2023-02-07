@@ -499,11 +499,17 @@ class PruneHook(EntropyHook):
         """
         Count the frequency of each pattern
         """
+        #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
+        #we want to convert this to BxF,LayerWidth
+        input=input_var[0].view(-1,input_var[0].shape[1])
+        #t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True)
+         
         if random() < self.ratio:
-            hist=torch.histogram(input_var[0].t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
+            print("input_var",input.shape)
+            hist=torch.histogram(input.detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
             print("hist",hist.shape)
             self.features[block_name][layer_name]= hist.add(self.features[block_name][layer_name])
-
+        #Hist should be of shape, LayerWidth, Gamma.shape[0]-1 as we are counting the number of times each pattern occurs for each neuron
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
