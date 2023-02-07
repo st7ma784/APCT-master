@@ -508,11 +508,11 @@ class PruneHook(EntropyHook):
 
     def hook(self, layer, input_var, output_var, layer_name):
         #print(layer.__dir__())
-        if random() < self.ratio:
-            input=output_var.view(output_var.shape[-1],-1)
-            hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
-            counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
-            self.features[layer_name]= counts.add(self.features[layer_name])
+        #if random() < self.ratio:
+        input=output_var.view(output_var.shape[-1],-1)
+        hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
+        counts=torch.stack([torch.bincount(hist[i,:],minlength=self.Gamma.shape[0]+1 ) for i in range(hist.shape[0])])
+        self.features[layer_name]= counts.add(self.features[layer_name])
    
     def process_layer(self,layer):
 
@@ -532,8 +532,9 @@ class PruneHook(EntropyHook):
         print("entropy",entropy.keys())
 
         #for block_name, block in self.model.named_modules():
-        for module_name, module in filter(lambda item : type(item[1]) in self.activations, self.model.named_modules()):
+        for (module_name, module) in filter(lambda item : type(item[1]) in self.activations, self.model.named_modules()):
             im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
+            #do random < threshold
             prune_module(module,module_name, im_score, self.args)
             #now consider pruning the near by batch norm layers 
         
