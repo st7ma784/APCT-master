@@ -479,12 +479,23 @@ from core.pattern import EntropyHook
 from functools import partial
 from random import random
 from collections import defaultdict
+
+
+
+
+
+
+
+
+
+
+
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
         self.device="cuda"
 
-        self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
+        self.activations =set([nn.Linear])#set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
   
     def set_up(self):
@@ -502,6 +513,7 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         #
+        print(output_var[0].shape)
         if random() < self.ratio:
             #print(input_var[0].device)
             #print(self.Gamma.device)
@@ -537,7 +549,7 @@ class PruneHook(EntropyHook):
             return torch.zeros(1)
         #print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()],dim=0).mean(dim=0))
         #print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
-        return reduce(torch.add,map(self.process_layer,block.values()))/leng
+        return {k:self.process_layer(v) for k,v in block.items()}
 
     def retrieve(self):
         if len(self.features.keys())==0:
