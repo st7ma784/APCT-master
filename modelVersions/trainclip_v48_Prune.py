@@ -501,6 +501,8 @@ class PruneHook(EntropyHook):
         """
         #
         if random() < self.ratio:
+            print(input_var.device)
+            print(self.Gamma.device)
         #assume input_var[0] is a tensors, of shape, B,LayerWidth,F
         #we want to convert this to BxF,LayerWidth
             input=input_var[0].view(input_var[0].shape[2],-1)
