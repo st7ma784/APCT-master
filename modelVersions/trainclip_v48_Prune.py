@@ -122,8 +122,9 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
     LTWeightsDict={K:V.weight.detach() for K,V in weightsDict.items() if isinstance(V,nn.Linear)}
     #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
     #print("block_entropy",block_entropy)
-    if block_entropy.shape[0] == 0:
-        return {}
+    #if block_entropy is empty tensor
+    if block_entropy == torch.tensor([]):
+            return {}
     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
     num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
     channel_entropy = block_entropy[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
