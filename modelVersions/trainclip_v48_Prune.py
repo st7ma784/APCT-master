@@ -500,8 +500,10 @@ class PruneHook(EntropyHook):
         Count the frequency of each pattern
         """
         if random() < self.ratio:
-            self.features[block_name][layer_name]= torch.histogram(input_var[0].t.detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist.add(self.features[block_name][layer_name])
-          
+            hist=torch.histogram(input_var[0].t().detach().to(device="cpu",dtype=torch.float32,non_blocking=True), self.Gamma).hist
+            print("hist",hist.shape)
+            self.features[block_name][layer_name]= hist.add(self.features[block_name][layer_name])
+
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
