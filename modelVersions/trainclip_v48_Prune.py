@@ -76,7 +76,7 @@ def compute_importance(weight, channel_entropy, eta):
                 else:   eta * channel_entropy * weight
     :return:    The importance_scores
     """
-    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1
+    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1 "weight and channel_entropy should have the same number of channels {} {} {} ".format(weight.shape, channel_entropy.shape, channel_entropy.ndim)
     weight = abs(weight)
     e_new_shape = (-1, ) + (1, ) * (weight.dim() - 1)
     channel_entropy = torch.tensor(channel_entropy).view(e_new_shape).cuda()
