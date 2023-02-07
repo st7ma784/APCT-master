@@ -511,7 +511,7 @@ class PruneHook(EntropyHook):
         print(layer)
 
         if random() < self.ratio:
-            input=output_var.view(output_var.shape[2],-1)
+            input=output_var.view(output_var.shape[-1],-1)
             hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
             counts=torch.stack([torch.bincount(hist[i,:]) for i in range(hist.shape[0])])
             self.features[block_name][layer.name]= counts.add(self.features[block_name][layer.name])
