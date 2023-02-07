@@ -63,8 +63,8 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1,device=self.device)
-        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1,device=self.device)
+        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1)
+        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1)
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
@@ -479,11 +479,11 @@ from functools import partial
 from random import random
 from collections import defaultdict
 class PruneHook(EntropyHook):
-    def __init__(self, model, Gamma, ratio=1,device="cpu"):
+    def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
-        self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=device)
-        self.device=device
+        self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=model.device)
+        self.device=model.device
   
     def set_up(self):
         """
