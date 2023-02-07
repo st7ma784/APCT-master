@@ -521,12 +521,12 @@ class PruneHook(EntropyHook):
     def process_layer(self,layer):
         #Calculate neural entropy - 
         # 1000,2000,1000
-        print("layer",layer.shape)
+        #print("layer",layer.shape)
 
         layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
         #.25,.50,.25
-        print(torch.sum(-layer*torch.log(1e-8+layer),dim=0).shape)
+        #print(torch.sum(-layer*torch.log(1e-8+layer),dim=0).shape)
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0) # changed from 0 
 
     def process_block_entropy(self, block):
@@ -535,7 +535,7 @@ class PruneHook(EntropyHook):
         leng=len(block)
         if leng==0:
             return torch.zeros(1)
-        print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()]))
+        #print(" Version A:", torch.stack([self.process_layer(layer) for layer in block.values()],dim=0).mean(dim=0))
         print(" Version B:", reduce(torch.add,map(self.process_layer,block.values()))/leng)
         return reduce(torch.add,map(self.process_layer,block.values()))/leng
 
@@ -658,9 +658,9 @@ def prune_Residual_Attention_block(block, block_entropy, eta):
 
     #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
     num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
-    channel_entropy = block_entropy#[0].mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
+    channel_entropy = block_entropy.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
     #channel_entropy = block_entropy
-    
+    print("channel_entropy",channel_entropy.shape)
     #lt_im_score = compute_importance(weights, channel_entropy, eta)
     lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
 
