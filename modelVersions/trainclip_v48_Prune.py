@@ -496,7 +496,7 @@ class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1, **kwargs):
         super().__init__(model, Gamma, ratio)
         self.device="cuda"
-        self.kwargs=kwargs
+        self.args=kwargs
         self.activations =set([nn.Linear])#set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
   
