@@ -481,9 +481,10 @@ from collections import defaultdict
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1):
         super().__init__(model, Gamma, ratio)
+        self.device="cuda"
+
         self.activations =set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
-        self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=model.device)
-        self.device="cpu"
+        self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
   
     def set_up(self):
         """
