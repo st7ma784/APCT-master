@@ -177,7 +177,7 @@ class LightningCLIPModule(LightningModule):
         C3 = C3 / C3.norm(dim=-1, keepdim=True)
         C4 = C4 / C4.norm(dim=-1, keepdim=True)
         C5 = C5 / C5.norm(dim=-1, keepdim=True)
-        
+
         return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                   torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
                                                   torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
@@ -331,6 +331,7 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         c=batch[1][:,torch.randint(0,5,(1,))]
+        c=c.squeeze()
 
         captions=self.encode_text(c) #run through main mode
         self.model2.encode_text(c)# to compare supervision model
