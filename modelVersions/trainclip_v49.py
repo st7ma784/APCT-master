@@ -6,21 +6,16 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisionTransformer, QuickGELU
+from clip.model import Transformer,LayerNorm,VisionTransformer
 from functools import partial,reduce
 import clip
 from operator import iadd
-#add APCT to path
-import sys
-sys.path.append("./APCT-master")
+
 from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
-from core.pattern import PruneHook, set_gamma
-from torch.nn.utils.prune import l1_unstructured, random_structured, ln_structured, remove, identity, is_pruned
 
- 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
@@ -45,8 +40,7 @@ class LightningCLIPModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
-        #print("learning_rate",learning_rate)
-        
+        print("learning_rate",learning_rate)
 
         self.context_length = context_length
         self.encoder = Transformer(
@@ -63,8 +57,7 @@ class LightningCLIPModule(LightningModule):
                 heads=transformer_heads,
                 output_dim=embed_dim
             )
-        self.model_hookI = PruneHook(self.encode_image,[-1,0,1], 0.1, method="Hard", prune_eta=4, amount=4,fc_pru_bound=-1)
-        self.model_hookT = PruneHook(self.encoder,[-1,0,1], 0.1, method="Hard", prune_eta=4, amount=4,fc_pru_bound=-1)
+        
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
         self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
         self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
@@ -91,19 +84,6 @@ class LightningCLIPModule(LightningModule):
         self.naninfcount=0
         print("done")
 
-    def on_train_epoch_start(self) -> None:
-        self.model_hookI.set_up()
-        self.model_hookT.set_up()
-
-    # def training_step(self, batch, batch_idx):
-    #     super().training_step(batch, batch_idx)
-
-    def on_train_epoch_end(self) -> None:
-        self.model_hookI.remove()
-        self.model_hookT.remove()
-
-
-    
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
@@ -155,9 +135,30 @@ class LightningCLIPModule(LightningModule):
         x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
         return x
 
-    def calculate_loss3(self, I, C1, C2, C3, C4, C5):
-  
-        return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+    def calculate_loss(self, I, C1, C2, C3, C4, C5):
+        #Calculate loss
+        #Loss=1 - sum((values - mean)^2)
+        arrMean=torch.add(  torch.div( I,6).view( I.shape[0],1,1,1,1,1,-1),
+                            torch.div(C1,6).view(1,C1.shape[0],1,1,1,1,-1)).add(
+                torch.add(  torch.div(C2,6).view(1,1,C2.shape[0],1,1,1,-1),
+                            torch.div(C3,6).view(1,1,1,C3.shape[0],1,1,-1)).add(
+                torch.add(  torch.div(C4,6).view(1,1,1,1,C4.shape[0],1,-1),
+                            torch.div(C5,6).view(1,1,1,1,1,C5.shape[0],-1))))
+        #Now we have the mean in the final dim shape (B,B,B,B,B,B,512)
+        #Normally, we'd do something like Val-mean. However, we do this the other way round for speed, and we can do this because abs(a-b)===abs(b-a)
+        #L2normm(Allvalues-mean)
+        var= torch.sum(torch.sqrt(torch.add(torch.pow(torch.abs(torch.sub(arrMean, I.view( I.shape[0],1,1,1,1,1,-1))),2),
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C1.view(1,C1.shape[0],1,1,1,1,-1))),2)).add(
+                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C2.view(1,1,C2.shape[0],1,1,1,-1))),2),
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C3.view(1,1,1,C3.shape[0],1,1,-1))),2))).add(
+                                       torch.add(torch.pow(torch.abs(torch.sub(arrMean,C4.view(1,1,1,1,C4.shape[0],1,-1))),2),
+                                                 torch.pow(torch.abs(torch.sub(arrMean,C5.view(1,1,1,1,1,C5.shape[0],-1))),2)))),dim=-1)
+        return 1-var
+        #print(Arr.shape)
+    
+    def calculate_loss2( self, I, C1, C2, C3, C4, C5):
+    
+        return 1-torch.sum(torch.sqrt(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                   torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
                                                   torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
                                                   torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1),
@@ -168,17 +169,22 @@ class LightningCLIPModule(LightningModule):
                                                         C2.view(1,1,C2.shape[0],1,1,1,-1),
                                                         C3.view(1,1,1,C3.shape[0],1,1,-1),
                                                         C4.view(1,1,1,1,C4.shape[0],1,-1),
-                                                        C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6),dim=-1))
-    # rewrite calculate_loss3 to accept a list of args as *args 
-    def calculate_lossn(self, *args):
-        argdict = dict(enumerate(args))
-        ones=torch.ones(len(args),len(args))
-        ones=ones.scatter(0,torch.arange(len(args)),torch.tensor([i.shape[0] for i in args]))
-        termlist=[arg.view(ones[i]) for i,arg in argdict.items()] # does this really need to be ordered?
-        term1=reduce(torch.add,[torch.pow(i,2) for i in termlist])
-        term2=reduce(torch.add,termlist)
-        return 1-torch.sqrt(torch.sum(term1.sub_(term2, alpha=1/len(args)), dim=-1))
-
+                                                        C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6)),dim=-1)
+    def calculate_loss3(self, I, C1, C2, C3, C4, C5):
+  
+        return 1-torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+                                                  torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
+                                                  torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
+                                                  torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1),
+                                                  torch.pow(C4,2).view(1,1,1,1,C4.shape[0],1,-1),
+                                                  torch.pow(C5,2).view(1,1,1,1,1,C5.shape[0],-1)]).sub_(
+                            torch.pow(reduce(torch.add,[I.view( I.shape[0],1,1,1,1,1,-1),
+                                                        C1.view(1,C1.shape[0],1,1,1,1,-1),
+                                                        C2.view(1,1,C2.shape[0],1,1,1,-1),
+                                                        C3.view(1,1,1,C3.shape[0],1,1,-1),
+                                                        C4.view(1,1,1,1,C4.shape[0],1,-1),
+                                                        C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6),dim=-1)
+    # @torch.jit.script
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         #self.features.append(image_features.clone().detach().cpu())
@@ -204,21 +210,23 @@ class LightningCLIPModule(LightningModule):
         labels=labels+self.lossim.ignore_index
         
         im,captions= batch[0],batch[1]
+        try:
+            logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         
-        logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        
-        lossim = self.lossim(logits, labels)
+            lossim = self.lossim(logits, labels)
 
-        loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
-        loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
-        loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
-        loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
-        loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
-        loss = lossim+loss1+loss2+loss3+loss4+loss5
-        loss=loss/6
-        loss = loss.mean()
-        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        return loss
+            loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
+            loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
+            loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
+            loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
+            loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
+            loss = lossim+loss1+loss2+loss3+loss4+loss5
+            loss=loss/6
+            loss = loss.mean()
+            self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        except:
+            loss=None
+        return {"loss": loss}
 
             
     def configure_optimizers(self):
@@ -232,7 +240,7 @@ class LightningCLIPModule(LightningModule):
     def batch_HSIC2(self,K):
         #K is Layers x B x B
         a=torch.sum(K,dim=-1)
-        #print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
+        print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
         b=torch.sum(K,dim=-2)
         c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[-2] - 1),torch.sum(a*b,dim=1),alpha=2)
         #print(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1))
@@ -289,13 +297,16 @@ class LightningCLIPModule(LightningModule):
         #calculate loss
         return logits_per_image*self.logit_scale.exp(), logits_per_text*self.logit_scale.exp()
     def validation_step(self,batch,*args):
-        
+        #do stock loss here
+        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
+       
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         image_features=self.encode_image(batch[0])
-        i=image_features.cpu() #run through main mode
+        i=image_features.detach().clone().cpu()
+        #run through main mode
         if self.current_epoch>0:
-            testpred=self.classifier.predict(i.numpy())
+            testpred=self.classifier.predict(image_features.cpu().numpy())
             self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
             self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
        
@@ -303,18 +314,17 @@ class LightningCLIPModule(LightningModule):
         self.labels.append(batch[2].cpu())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
-        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2)) 
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
-        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=1,neginf=-2))
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200))
         joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))), nan=0.0,posinf=1,neginf=-2)
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         c=batch[1][:,torch.randint(0,5,(1,))]
-        c=c.squeeze()
-        print(c.shape)
+
         captions=self.encode_text(c) #run through main mode
         self.model2.encode_text(c)# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
@@ -323,27 +333,22 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,self.batch_HSIC2(a))
         #joint=torch.nan_to_num(self.batch_HSIC3(a,torch.stack(list(self.model1_features.values()))))
         joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
+        #print(joint_HSIC)
+        # if not hasattr(self,'CAPhsic_matrix1'):
+        #     self.CAPhsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
-        if self.current_epoch>0:
-            testpred=self.classifier.predict(i.numpy())
-            self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
-            self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
-            return {"loss":np.mean(self.Linearloss)}
-
-        #Check the loss on the stock method for comparison
-        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
-
+       
         logitsI,logitsT=self.calculate_lossStock(image_features, captions)
         lossim = self.lossim(logitsI, labels)
+        #print("logitsT SHAPE ",logitsT.shape)
         loss1 = self.loss1(logitsT, labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
         self.log('val_loss-stock', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         return loss
-
-    def validation_epoch_end(self, validation_step_outputs):
+    def on_validation_epoch_end(self):
 
 
         # Evaluate using the logistic regression classifier
@@ -361,25 +366,6 @@ class LightningCLIPModule(LightningModule):
             handle.remove()
         print(self.naninfcount)
         del self.model2
-        
-        global_entropy = self.model_hookI.retrieve()
-        
-
-        # im_scores =map(lambda name, block: prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]), filter(lambda name,block: isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys(), self.encode_image.named_modules()[:-1]))
-        # for imscoredict in im_scores:
-        #     for (param_to_prune, im_score) in imscoredict.items():
-        #         prune_module(param_to_prune, im_score, self.args)
-        #then purun accordingly 
-        self.model_hookI.remove()
-
-
-        global_entropy = self.model_hookT.retrieve()
-        # im_scores =[prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]) for name, block in [(k,v) for k,v in self.encoder.named_modules()][:-1] if isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys()]
-        # for imscoredict in im_scores:
-        #     for (param_to_prune, im_score) in imscoredict.items():
-        #         prune_module(param_to_prune, im_score, self.args)
-        #then purun accordingly 
-        self.model_hookT.remove()
      
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
@@ -421,7 +407,7 @@ class LightningCLIPModule(LightningModule):
         
         self.handles.extend([layer.register_forward_hook(partial(self._log_layer, "model2", name)) for name, layer in self.model2.transformer.named_modules()])
         
-
+  
     def export(self):
         """
         Exports the CKA data along with the respective model layer names.
@@ -474,177 +460,3 @@ class LightningCLIPModule(LightningModule):
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
-from core.pattern import EntropyHook
-from functools import partial
-from random import random
-from collections import defaultdict
-
-class PruneHook(EntropyHook):
-    def __init__(self, model, Gamma, ratio=1, **kwargs):
-        super().__init__(model, Gamma, ratio)
-        self.device="cuda"
-        self.args=kwargs
-        self.activations =set([nn.Linear])#set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
-        self.Gamma=torch.tensor(Gamma, dtype=torch.float32,device=self.device)
-  
-    def set_up(self):
-        self.remove()
-        self.features=defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device))
-        self.handles.extend( [module.register_forward_hook(partial(self.hook, layer_name=module_name)) for module_name, module in self.model.named_modules() if type(module) in self.activations])
-
-    def hook(self, layer, input_var, output_var, layer_name):
-        input=output_var.view(output_var.shape[-1],-1)
-        hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
-        counts=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1).sum(dim=1)
-
-        #counts=torch.bincount(hist,minlength=self.Gamma.shape[0]+1)
-        self.features[layer_name]= counts.add(self.features[layer_name])
-   
-    def process_layer(self,layer):
-        layer = layer.reshape(self.Gamma.shape[0]+1, -1)
-        layer /= layer.sum(axis=0)
-        return torch.sum(-layer*torch.log(1e-8+layer),dim=0) # changed from 0 
-
-    def process_block_entropy(self, blockdict):
-        if len(blockdict)==0:
-            return torch.zeros(1)
-        return {k:self.process_layer(v) for k,v in blockdict.items()}
-
-    def retrieve(self,eta=-1):
-        if len(self.features.keys())==0:
-            return {}
-        entropy=self.process_block_entropy(self.features) 
-        print("entropy",entropy.keys())
-
-        #for block_name, block in self.model.named_modules():
-        for (module_name, module) in filter(lambda item : type(item[1]) in self.activations and random()<self.ratio, self.model.named_modules()):
-            im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
-            prune_module(module,"weight", im_score, self.args)
-            #now consider pruning the near by batch norm layers 
-        
-        
-        '''
-                
-            LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
-            channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-            print("channel_entropy",channel_entropy.shape)
-            #lt_im_score = compute_importance(weights, channel_entropy, eta)
-            lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
-            for (param_to_prune, im_score) in lt_importance_dict:
-                prune_module(param_to_prune, im_score, self.args)        
-        '''
-  
-def batched_bincount(x, dim, max_value):
-    target = torch.zeros(x.shape[0], max_value, dtype=x.dtype, device=x.device)
-    values = torch.ones_like(x)
-    target.scatter_add_(dim, x, values)
-    return target
-
-def prune_module(layer,name, im_score, args):
-    
-    cur_param = getattr(layer, name)
-    num_dims = cur_param.dim()
-    if args["method"] == 'LnStructured':
-        if num_dims > 1:
-            ln_structured(layer, name, args["amount"], 2, dim=0, importance_scores=im_score.cuda())
-        else:
-            l1_unstructured(layer, name, args["amount"], importance_scores=im_score.cuda())
-    elif args["method"] == 'RandomStructured':
-        random_structured(layer, name, args["amount"], dim=0)
-    elif args["method"] == 'Hard':
-        slc = [slice(None)] * num_dims
-        tensor_to_pru = im_score[slc]
-
-        hard_ind = tensor_to_pru[(slice(None, ),) + (0,) * (num_dims - 1)]
-        num_filters = torch.sum(hard_ind < args["fc_pru_bound"]).to(torch.int)
-        if num_filters == 0:
-            identity(layer, name)
-        elif 0 < num_filters < len(tensor_to_pru):
-            if num_dims > 1:
-                ln_structured(layer, name, int(num_filters), 2, dim=0, importance_scores=im_score)
-            else:
-                l1_unstructured(layer, name, int(num_filters), importance_scores=im_score)
-       
-
-def compute_importance(weight, channel_entropy, eta):
-
-    if not weight.shape[0] == channel_entropy.shape[0] and channel_entropy.shape[0] == weight.t().shape[0]:
-        weight = weight.t()
-        print("Transposing weight")
-    assert weight.shape[0] == channel_entropy.shape[0] and channel_entropy.ndim == 1   
-    weight = abs(weight)
-
-    if eta == -1:
-        importance_scores = weight
-    elif eta == 0:
-        importance_scores = weight
-    elif eta == 2:
-        importance_scores = channel_entropy * weight
-    elif eta == 3:
-        importance_scores =1 / (torch.div(1,channel_entropy) +torch.div(1,weight))
-    elif eta == 4:
-        normed_entropy = (channel_entropy - channel_entropy.mean()) / channel_entropy.std()
-        normed_weight = (weight - weight.mean()) / weight.std()
-        importance_scores = normed_entropy * normed_weight
-    elif eta == 5:
-        normed_entropy = (channel_entropy - channel_entropy.mean()) / channel_entropy.std()
-        normed_weight = (weight - weight.mean()) / weight.std()
-        importance_scores = normed_entropy + normed_weight
-    else:
-        raise ValueError()
-
-    return importance_scores
-
-#ENTRY POINT
-def prune_Residual_Attention_block(block, block_entropy, eta):
-    """
-    :param block: RA block to be pruned
-    :param block_entropy: entropy of the block output (out_channels * H * W)
-    :param eta: hyper parameter.
-    :return:
-    """
-    if block_entropy is None:
-        return {}
-    print("Pruning Residual Attention Block", block_entropy)
-
-    #weights = getattr(block.LT, 'weight').detach()# in original code, LT is either a linear layer or Conv2d layer
-    # weightsDict={"attn":block.attn,
-    #             "LN1":block.ln_1, #layer norm
-    #             "MLP":block.mlp,    
-    #             "MLP_cfc":block.mlp.c_fc, #Linear layer
-    #             "MLP_gelu":block.mlp.gelu,
-    #             "MLP_c_proj":block.mlp.c_proj, #Linear layer
-    #             "LN2":block.ln_2, #layer norm
-    #             }
-    #LNDict={K:V for K,V in weightsDict.items() if isinstance(V,nn.LayerNorm)}
-    #print("block_entropy",block_entropy)
-    #if block_entropy is empty tensor
-
-    #block entropy is a list of activations at the norm layers.  each element, is a single value of entropy 
-    #num_dim = len(block_entropy.shape)   ####THROWS EERRROR                             # num of dimensions
-    
-    LTWeightsDict={name:layer.weight.detach() for name,layer in block.named_modules() if isinstance(layer,nn.Linear)}
-    channel_entropy = block_entropy#.mean(tuple(range(1, num_dim)))   # averaged entropy (out_channels, )
-    print("channel_entropy",channel_entropy.shape)
-    #lt_im_score = compute_importance(weights, channel_entropy, eta)
-    lt_importance_dict={K: compute_importance(V, channel_entropy, eta) for K,V in LTWeightsDict.items()}
-    block_type = 'RABlock'
-
-    linear_im_dict = {
-        (K,"weight",block_type):V for K,V in lt_importance_dict.items()}
-    #lt_im_score_dict={K: compute_importance(V.weight.detach(), channel_entropy, eta) for K,V in weightsDict.items()}
-    #bn_im_score = lt_im_score.mean(dim=tuple(range(1, weights.dim())))
-    #bn_im_score_dict={K: V.mean(dim=tuple(range(1, LTWeightsDict[K].dim()))) for K,V in lt_importance_dict.items()}
-
-
-    # im_dict = {
-    #     (block.LT, 'weight', block_type): lt_im_score,
-    #     (block.BN, 'weight', block_type): bn_im_score,
-    #     (block.BN, 'bias', block_type): bn_im_score
-    # }
-    # bn_weight_im_dict = {
-    #     (K,"weight",block_type):V for K,V in bn_im_score_dict.items()}
-    # bn_bias_im_dict = {
-    #     (K,"bias",block_type):V for K,V in bn_im_score_dict.items()}
-    
-    return linear_im_dict

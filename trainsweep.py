@@ -14,7 +14,7 @@ if __name__=="__main__":
                 'values':[5e-5]
             },
             'batch_size': {
-                'values': [8]
+                'values': [10]
             },
             'precision': {
                 'values': ['bf16']
@@ -26,7 +26,7 @@ if __name__=="__main__":
                 'values': [512]
             },
             'codeversion':{
-                'values':[6,7,5,9,10]
+                'values':[7,10,11]
             },
             'transformer_heads':{
                 'values': [16]
