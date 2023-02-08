@@ -300,7 +300,7 @@ class LightningCLIPModule(LightningModule):
         C1 = C1 / C1.norm(dim=-1, keepdim=True)
         #calculate logits
         logits_per_image = self.logit_scale.exp() * I @ C1.T
-        logits_per_text = *self.logit_scale.exp() * C1 @ I.T
+        logits_per_text = self.logit_scale.exp() * C1 @ I.T
         #calculate loss
         return logits_per_image, logits_per_text
     def validation_step(self,batch,*args):
