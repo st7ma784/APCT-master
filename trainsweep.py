@@ -1,5 +1,4 @@
 import wandb
-wandb.login()
 
 if __name__=="__main__":
     sweep_config = {
