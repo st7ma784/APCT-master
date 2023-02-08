@@ -172,7 +172,7 @@ class LightningCLIPModule(LightningModule):
                                                         C5.view(1,1,1,1,1,C5.shape[0],-1)]),2),alpha=1/6)),dim=-1)
     def calculate_loss3(self, I, C1, C2, C3, C4, C5):
   
-        return 1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
+        return  1-torch.sqrt(torch.sum(reduce(torch.add,[torch.pow(I,2).view( I.shape[0],1,1,1,1,1,-1),
                                                   torch.pow(C1,2).view(1,C1.shape[0],1,1,1,1,-1),
                                                   torch.pow(C2,2).view(1,1,C2.shape[0],1,1,1,-1),
                                                   torch.pow(C3,2).view(1,1,1,C3.shape[0],1,1,-1),
@@ -211,7 +211,7 @@ class LightningCLIPModule(LightningModule):
         
         im,captions= batch[0],batch[1]
         try:
-            logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+            logits=self.logit_scale.exp()* self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         
             lossim = self.lossim(logits, labels)
 
@@ -292,10 +292,10 @@ class LightningCLIPModule(LightningModule):
         I = I / I.norm(dim=-1, keepdim=True)
         C1 = C1 / C1.norm(dim=-1, keepdim=True)
         #calculate logits
-        logits_per_image = I @ C1.T
-        logits_per_text = C1 @ I.T
+        logits_per_image = self.logit_scale.exp() * I @ C1.T
+        logits_per_text = self.logit_scale.exp() * C1 @ I.T
         #calculate loss
-        return logits_per_image*self.logit_scale.exp(), logits_per_text*self.logit_scale.exp()
+        return logits_per_image, logits_per_text
     def validation_step(self,batch,*args):
         #do stock loss here
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)

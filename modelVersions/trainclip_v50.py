@@ -218,7 +218,7 @@ class LightningCLIPModule(LightningModule):
         
         im,captions= batch[0],batch[1]
         try:
-            logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+            logits=self.logit_scale.exp() * self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         
             lossim = self.lossim(logits, labels)
 
@@ -299,10 +299,10 @@ class LightningCLIPModule(LightningModule):
         I = I / I.norm(dim=-1, keepdim=True)
         C1 = C1 / C1.norm(dim=-1, keepdim=True)
         #calculate logits
-        logits_per_image = I @ C1.T
-        logits_per_text = C1 @ I.T
+        logits_per_image = self.logit_scale.exp() * I @ C1.T
+        logits_per_text = *self.logit_scale.exp() * C1 @ I.T
         #calculate loss
-        return logits_per_image*self.logit_scale.exp(), logits_per_text*self.logit_scale.exp()
+        return logits_per_image, logits_per_text
     def validation_step(self,batch,*args):
         #do stock loss here
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
