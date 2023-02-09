@@ -493,6 +493,7 @@ class PruneHook(EntropyHook):
         self.handles.extend( [module.register_forward_hook(partial(self.hook, layer_name=module_name)) for module_name, module in self.model.named_modules() if type(module) in self.activations])
 
     def hook(self, layer, input_var, output_var, layer_name):
+        #if random()>self.ratio:# here because adds random noise to the data
         input=output_var.view(output_var.shape[-1],-1)
         hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
         counts=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1).sum(dim=1)
@@ -533,25 +534,22 @@ class PruneHook(EntropyHook):
             for (param_to_prune, im_score) in lt_importance_dict:
                 prune_module(param_to_prune, im_score, self.args)        
         '''
-  
-def batched_bincount(x, dim, max_value):
-    target = torch.zeros(x.shape[0], max_value, dtype=x.dtype, device=x.device)
-    values = torch.ones_like(x)
-    target.scatter_add_(dim, x, values)
-    return target
 
 def prune_module(layer,name, im_score, args):
     
     cur_param = getattr(layer, name)
     num_dims = cur_param.dim()
     if args["method"] == 'LnStructured':
+        #compute importance according to the filters, 
         if num_dims > 1:
             ln_structured(layer, name, args["amount"], 2, dim=0, importance_scores=im_score.cuda())
         else:
             l1_unstructured(layer, name, args["amount"], importance_scores=im_score.cuda())
     elif args["method"] == 'RandomStructured':
+        #use the absolute weight value and remove it (set weight to 0) tocreate sparsity.
         random_structured(layer, name, args["amount"], dim=0)
     elif args["method"] == 'Hard':
+        #use entropy as importance score not the weight value
         slc = [slice(None)] * num_dims
         tensor_to_pru = im_score[slc]
 

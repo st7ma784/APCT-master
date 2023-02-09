@@ -9,9 +9,7 @@ from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from functools import partial,reduce
 import clip
-from operator import iadd
 
-from warnings import warn
 import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
@@ -314,10 +312,10 @@ class LightningCLIPModule(LightningModule):
         self.labels.append(batch[2].cpu())
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
-        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
+        self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=10,neginf=-20)) 
         a=torch.nan_to_num(torch.stack(list(self.model2_features.values())))
       
-        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200))
+        self.IMhsic_matrix2=torch.add(self.IMhsic_matrix2,torch.nan_to_num(self.batch_HSIC2(a),nan=0.0,posinf=10,neginf=-20))
         joint_HSIC=torch.nan_to_num(self.batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))), nan=0.0,posinf=1,neginf=-2)
         self.IMhsic_matrix1=torch.add(self.IMhsic_matrix1,joint_HSIC) 
         ##Now Do Text
