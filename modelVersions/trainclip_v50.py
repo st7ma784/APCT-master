@@ -219,7 +219,8 @@ class LightningCLIPModule(LightningModule):
         im,captions= batch[0],batch[1]
         try:
             logits=self.logit_scale.exp() * self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        
+            self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False, rank_zero_only=True)
+
             lossim = self.lossim(logits, labels)
 
             loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
