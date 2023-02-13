@@ -340,9 +340,8 @@ class LightningCLIPModule(LightningModule):
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
-        self.log('val_loss-stock', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        return loss
-
+        self.log('val_loss-stock', loss, prog_bar=True)
+        return {"loss":loss}
     def validation_epoch_end(self, validation_step_outputs):
 
 
