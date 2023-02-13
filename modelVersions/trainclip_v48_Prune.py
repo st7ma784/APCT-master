@@ -329,7 +329,7 @@ class LightningCLIPModule(LightningModule):
             testpred=self.classifier.predict(i.numpy())
             self.Linearloss.append(np.mean(batch[2].cpu().numpy() == testpred))
             self.log('Linearloss', np.mean(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
-            return {"loss":np.mean(self.Linearloss)}
+            #return {"loss":np.mean(self.Linearloss)}
 
         #Check the loss on the stock method for comparison
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
