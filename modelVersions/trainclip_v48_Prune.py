@@ -207,6 +207,7 @@ class LightningCLIPModule(LightningModule):
         
         logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False, rank_zero_only=True)
+        self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False, rank_zero_only=True)
 
         lossim = self.lossim(logits, labels)
 

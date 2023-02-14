@@ -213,6 +213,8 @@ class LightningCLIPModule(LightningModule):
         
             lossim = self.lossim(logits, labels)
             self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False, rank_zero_only=True)
+            self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False, rank_zero_only=True)
+
             loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
             loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
             loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
