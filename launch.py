@@ -35,7 +35,9 @@ def train(config={
     version=int(config.get("codeversion",-1))
     
     from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
-    if version==16:
+    if version==17:
+        from modelVersions.trainclip_v53_fxloss import LightningCLIPModule
+    elif version==16:
         from modelVersions.trainclip_v52_fxloss import LightningCLIPModule
     elif version==15:
         from modelVersions.trainclip_v53 import LightningCLIPModule
