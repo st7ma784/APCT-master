@@ -206,7 +206,7 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(batch[0].shape[0],dtype=torch.long,device=self.device))))))
+        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(batch[0].shape[0],dtype=torch.float,device=self.device))))))
 
         
         im,captions= batch[0],batch[1]
