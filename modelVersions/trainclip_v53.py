@@ -9,7 +9,7 @@ from typing import Optional
 from clip.model import Transformer,LayerNorm,VisionTransformer
 from functools import partial,reduce
 import clip
-from operator import iadd
+from operator import iadd   
 
 from warnings import warn
 import matplotlib.pyplot as plt
