@@ -178,25 +178,25 @@ class LightningCLIPModule(LightningModule):
         # for every item==0, new value is ignore_index, # should get B^(N-1) with labels on diagonal and ignore_index elsewhere
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
         im,captions= batch[0],batch[1]
-        try:
-            logits=self.logit_scale.exp() * self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-            self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False, rank_zero_only=True)
-            self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False, rank_zero_only=True)
+        
+        logits=self.logit_scale.exp() * self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
+        self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False, rank_zero_only=True)
+        self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False, rank_zero_only=True)
 
-            lossim = self.lossim(logits, labels)
+        lossim = self.lossim(logits, labels)
 
-            loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
-            loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
-            loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
-            loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
-            loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
-            loss = lossim+loss1+loss2+loss3+loss4+loss5
-            loss=loss/6
-            loss = loss.mean()
-            self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
-        except:
-            loss=None
-        return {"loss": loss}
+        loss1 = self.loss1(logits.permute(1,2,3,4,5,0), labels)
+        loss2 = self.loss2(logits.permute(2,3,4,5,0,1), labels)
+        loss3 = self.loss3(logits.permute(3,4,5,0,1,2), labels)
+        loss4 = self.loss4(logits.permute(4,5,0,1,2,3), labels)
+        loss5 = self.loss5(logits.permute(5,0,1,2,3,4), labels)
+        loss = lossim+loss1+loss2+loss3+loss4+loss5
+        loss=loss/6
+        loss = loss.mean()
+        self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
+        return loss 
+        #loss=None
+        #return {"loss": loss}
 
             
     def configure_optimizers(self):
