@@ -59,14 +59,14 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.lossim=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss1=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss2=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss3=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss4=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss5=torch.nn.CrossEntropyLoss(reduction='sum')
         self.vocab_size = vocab_size
-
+        
         self.vocab_size = vocab_size
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
@@ -173,10 +173,13 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        #labels=#torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)))))
+        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)))))
         #labels is shape B^(N-1)
         # for every item==0, new value is ignore_index, # should get B^(N-1) with labels on diagonal and ignore_index elsewhere
-        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
+        #labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
+        #shape B^1
+
+
         im,captions= batch[0],batch[1]
         
         logits=self.logit_scale.exp() * self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
@@ -195,8 +198,7 @@ class LightningCLIPModule(LightningModule):
         loss = loss.mean()
         self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         return loss 
-        #loss=None
-        #return {"loss": loss}
+        
 
             
     def configure_optimizers(self):
