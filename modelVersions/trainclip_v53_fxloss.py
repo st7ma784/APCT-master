@@ -71,7 +71,7 @@ class LightningCLIPModule(LightningModule):
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
         self.positional_embedding = nn.Parameter(torch.empty(self.context_length, transformer_width))
         self.ln_final = LayerNorm(transformer_width)
-        self.text_projection = nn.Parameter(torch.empty(transformer_width, embed_dim))
+        self.text_projections = [nn.Parameter(torch.empty(transformer_width, embed_dim)) for i in range(5)]
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.transformer_width=transformer_width
         self.initialize_parameters()
@@ -122,17 +122,17 @@ class LightningCLIPModule(LightningModule):
             nn.init.normal_(block.attn.out_proj.weight, std=proj_std)
             nn.init.normal_(block.mlp.c_fc.weight, std=fc_std)
             nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
+        for t in self.text_projections:
+            nn.init.normal_(t, std=self.encoder.width ** -0.5)
 
-        nn.init.normal_(self.text_projection, std=self.encoder.width ** -0.5)
-
-    def encode_text(self, text):
+    def encode_text(self, text, i=0):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
         x = x + self.positional_embedding.type(self.dtype)
         x = x.permute(1, 0, 2)  # NLD -> LND
         x = self.encoder(x)
         x = x.permute(1, 0, 2)  # LND -> NLD
         x = self.ln_final(x).type(self.dtype)
-        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] @ self.text_projection
+        x = x[torch.arange(x.shape[0]), text.argmax(dim=-1)] 
         return x
 
     def calculate_loss(self, I, C1, C2, C3, C4, C5):
@@ -188,17 +188,19 @@ class LightningCLIPModule(LightningModule):
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         self.log("image_features",torch.sum(image_features))
+        #self.log("image_features",image_features.norm(dim=-1))
+        self.log("image_features",image_features.norm(dim=-1).mean())
         #self.features.append(image_features.clone().detach().cpu())
         #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
-        caption_features1=self.encode_text(captions1)
+        caption_features1=self.encode_text(captions1)@ self.text_projections[0]
         #caption_features1=caption_features1/ torch.norm(caption_features1, dim=1, keepdim=True)
-        caption_features2=self.encode_text(captions2)
+        caption_features2=self.encode_text(captions2)@ self.text_projections[1]
         #caption_features2=caption_features2/ torch.norm(caption_features2, dim=1, keepdim=True)
-        caption_features3=self.encode_text(captions3)
+        caption_features3=self.encode_text(captions3)@ self.text_projections[2]
         #caption_features3=caption_features3/ torch.norm(caption_features3, dim=1, keepdim=True)
-        caption_features4=self.encode_text(captions4)
+        caption_features4=self.encode_text(captions4)@ self.text_projections[3]
         #caption_features4=caption_features4/ torch.norm(caption_features4, dim=1, keepdim=True)
-        caption_features5=self.encode_text(captions5)
+        caption_features5=self.encode_text(captions5)@ self.text_projections[4]
         #caption_features5=caption_features5/ torch.norm(caption_features5, dim=1, keepdim=True)
 
         return self.calculate_loss3(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5)*self.logit_scale.exp()
@@ -259,7 +261,9 @@ class LightningCLIPModule(LightningModule):
         return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
         #returns many pos infs 
     def on_validation_epoch_start(self):
-        
+        self.log("logit_scale",self.logit_scale.exp(),enable_graph=False, rank_zero_only=True)
+        self.log("learning_rate",self.trainer.optimizers[0].param_groups[0]['lr'],enable_graph=False, rank_zero_only=True)
+        self.log("projection sum", torch.sum(self.text_projections[0]),enable_graph=False, rank_zero_only=True)
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
@@ -324,10 +328,11 @@ class LightningCLIPModule(LightningModule):
         ##Now Do Text
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        c=batch[1][:,torch.randint(0,5,(1,))]
+        indx=torch.randint(0,5,(1,))
+        c=batch[1][:,indx]
         c=c.squeeze()
 
-        captions=self.encode_text(c) #run through main mode
+        captions=self.encode_text(c)@self.model2.text_projection#run through main mode
         self.model2.encode_text(c)# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,self.batch_HSIC2(a)) 

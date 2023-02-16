@@ -289,6 +289,7 @@ class LightningCLIPModule(LightningModule):
             cache5=cache[:,4]#.to(torch.device("cpu"),non_blocking=True)
             del cache
         cacheim=self.encode_image(batch[0])
+        self.log("logits image",torch.sum(cacheim))
         if self.JSE:
             JSEFactor=1-(4/torch.sum(torch.stack([cacheim,cache1,cache2,cache3,cache4,cache5],dim=0).pow(2),dim=0))
             #print(JSEFactor)

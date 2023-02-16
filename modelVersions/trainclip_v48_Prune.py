@@ -6,7 +6,7 @@ import torch
 import numpy as np
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from typing import Optional
-from clip.model import Transformer,LayerNorm,VisionTransformer, QuickGELU
+from clip.model import Transformer,LayerNorm,VisionTransformer
 from functools import partial,reduce
 import clip
 from operator import iadd
