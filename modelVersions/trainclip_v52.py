@@ -173,9 +173,8 @@ class LightningCLIPModule(LightningModule):
 
 
     def training_step(self, batch, batch_idx,optimizer_idx=0):
-        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.lossim.ignore_index))))
+        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(batch[0].shape[0],dtype=torch.float,device=self.device))))))
         #labels is shape B^(N-1)
-        labels=labels+self.lossim.ignore_index # for every item==0, new value is ignore_index, # should get B^(N-1) with labels on diagonal and ignore_index elsewhere
         
         im,captions= batch[0],batch[1]
         try:
