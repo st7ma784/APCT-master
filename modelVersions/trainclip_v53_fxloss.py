@@ -187,7 +187,7 @@ class LightningCLIPModule(LightningModule):
     # @torch.jit.script
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
-        self.log("image_features",torch.sum(image_features,dim=-1))
+        self.log("image_features",torch.sum(image_features))
         #self.features.append(image_features.clone().detach().cpu())
         #image_features=image_features/ torch.norm(image_features, dim=1, keepdim=True)
         caption_features1=self.encode_text(captions1)
