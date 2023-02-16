@@ -388,6 +388,7 @@ class LightningCLIPModule(LightningModule):
         opt_a.step()
         opt_a.zero_grad()
         #        self.backward(0)
+        return loss
             
     def configure_optimizers(self):
         
