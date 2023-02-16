@@ -142,8 +142,8 @@ class LightningCLIPModule(LightningModule):
 
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        self.encode_image(batch[0]) #run through main mode
-        self.encode_text(batch[1][:,0])
+        i=self.encode_image(batch[0]) #run through main mode
+        c=self.encode_text(batch[1][:,0])
 
         self.model2.encode_image(batch[0])# to compare supervision model
         self.model2.encode_text(batch[1][:,0])
@@ -159,6 +159,26 @@ class LightningCLIPModule(LightningModule):
         if not hasattr(self,'hsic_matrix1'):
             self.hsic_matrix1=torch.zeros(joint_HSIC.shape,device=self.device)
         self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
+        labels=torch.arange(i.shape[0],device=self.device)
+        logitsI,logitsT=self.calculate_lossStock(i, c)
+        lossim = self.lossim(logitsI, labels)
+        #print("logitsT SHAPE ",logitsT.shape)
+        loss1 = self.loss1(logitsT, labels)
+        loss = lossim+loss1
+        loss=loss/2
+        loss = loss.mean()
+        self.log('val_loss-stock', loss, enable_graph=False)
+        return loss
+    def calculate_lossStock(self, I, C1):
+  
+        #normalize image and text features
+        I = I / I.norm(dim=-1, keepdim=True)
+        C1 = C1 / C1.norm(dim=-1, keepdim=True)
+        #calculate logits
+        logits_per_image = self.logit_scale.exp() * I @ C1.T
+        logits_per_text = self.logit_scale.exp() * C1 @ I.T
+        #calculate loss
+        return logits_per_image, logits_per_text
     def on_validation_epoch_end(self,):
         self.unfreeze()
         self.train()
@@ -256,11 +276,8 @@ class LightningCLIPModule(LightningModule):
         # setting use_pl_optimizer=True will maintain plugin/precision support
         opt_a = self.optimizers()
 
-        labels=torch.diag_embed(torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)-self.loss.ignore_index)
+        labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(batch[0].shape[0],dtype=torch.float,device=self.device))))))
         logs=self.logit_scale.exp()
-        for i in range(3):
-            labels=torch.diag_embed(labels)
-        labels=labels+self.loss.ignore_index
         #self.labels=self.labels.to(self.device)
         with torch.no_grad():
             cache=self.encode_text(batch[1].flatten(start_dim=0,end_dim=1)).unflatten(0,(batch[1].shape[0],5),)
