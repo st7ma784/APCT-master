@@ -63,7 +63,7 @@ class LightningCLIPModule(LightningModule):
                 output_dim=embed_dim
             )
         
-        self.loss=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.loss=torch.nn.CrossEntropyLoss(reduction='sum')
         self.vocab_size = vocab_size
         self.automatic_optimization=False
         self.token_embedding = nn.Embedding(vocab_size, transformer_width)
