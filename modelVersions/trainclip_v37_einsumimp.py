@@ -161,9 +161,9 @@ class LightningCLIPModule(LightningModule):
         self.hsic_matrix1=torch.add(self.hsic_matrix1,joint_HSIC) 
         labels=torch.arange(i.shape[0],device=self.device)
         logitsI,logitsT=self.calculate_lossStock(i, c)
-        lossim = self.lossim(logitsI, labels)
+        lossim = self.loss(logitsI, labels)
         #print("logitsT SHAPE ",logitsT.shape)
-        loss1 = self.loss1(logitsT, labels)
+        loss1 = self.loss(logitsT, labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
