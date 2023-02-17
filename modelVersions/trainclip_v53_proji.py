@@ -126,6 +126,7 @@ class LightningCLIPModule(LightningModule):
             nn.init.normal_(block.mlp.c_proj.weight, std=proj_std)
 
         nn.init.normal_(self.text_projection, std=self.encoder.width ** -0.5)
+        nn.init.normal_(self.image_projection, std=self.encoder.width ** -0.5)
 
     def encode_text(self, text):
         x = self.token_embedding(text).type(self.dtype)  # [batch_size, n_ctx, d_model]
