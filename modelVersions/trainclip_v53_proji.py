@@ -59,12 +59,12 @@ class LightningCLIPModule(LightningModule):
             )
         
         #self.linear.weight=torch.nn.Parameter(self.clip.token_embedding.weight.T)
-        self.lossim=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss1=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss2=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss3=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss4=torch.nn.CrossEntropyLoss(reduction='mean')
-        self.loss5=torch.nn.CrossEntropyLoss(reduction='mean')
+        self.lossim=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss1=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss2=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss3=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss4=torch.nn.CrossEntropyLoss(reduction='sum')
+        self.loss5=torch.nn.CrossEntropyLoss(reduction='sum')
         self.vocab_size = vocab_size
 
         self.vocab_size = vocab_size
