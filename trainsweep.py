@@ -25,7 +25,7 @@ if __name__=="__main__":
                 'values': [512]
             },
             'codeversion':{
-                'values':[15,16,17,18]
+                'values':[10,11,12,13,14,15,16,17,18,19,20,21,22]
             },
             'transformer_heads':{
                 'values': [16]
