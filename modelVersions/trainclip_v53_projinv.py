@@ -340,10 +340,10 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
-        self.log("delta solve - proj",torch.sum(torch.linalg.solve(captions,image_features,left=False)-self.text_projection), prog_bar=True,enable_graph=False)
-        self.log("delta solve - projinv",torch.sum(torch.linalg.solve(captions,image_features,left=False)-torch.inverse(self.text_projection)), prog_bar=True,enable_graph=False)
+        self.log("delta solve - proj",torch.sum(torch.linalg.solve(captions,image_features.float(),left=False)-self.text_projection), prog_bar=True,enable_graph=False)
+        self.log("delta solve - projinv",torch.sum(torch.linalg.solve(captions,image_features.float(),left=False)-torch.inverse(self.text_projection)), prog_bar=True,enable_graph=False)
 
-        logitsI,logitsT=self.calculate_lossStock(image_features, captions)
+        logitsI,logitsT=self.calculate_lossStock(image_features, captions@self.text_projection)
         lossim = self.lossim(logitsI, labels)
         #print("logitsT SHAPE ",logitsT.shape)
         loss1 = self.loss1(logitsT, labels)
@@ -351,6 +351,15 @@ class LightningCLIPModule(LightningModule):
         loss=loss/2
         loss = loss.mean()
         self.log('val_loss-stock', loss, prog_bar=True,enable_graph=False)
+        
+        logitsI,logitsT=self.calculate_lossStock(image_features@torch.inverse(self.text_projection), captions)
+        lossim = self.lossim(logitsI, labels)
+        #print("logitsT SHAPE ",logitsT.shape)
+        loss1 = self.loss1(logitsT, labels)
+        loss = lossim+loss1
+        loss=loss/2
+        loss = loss.mean()
+        self.log('val_loss-invproj', loss, prog_bar=True,enable_graph=False)
         return loss
     def on_validation_epoch_end(self):
 
