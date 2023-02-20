@@ -302,7 +302,7 @@ class LightningCLIPModule(LightningModule):
        
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
-        image_features=self.encode_image(batch[0])@torch.inverse(self.text_projection)
+        image_features=self.encode_image(batch[0])
         i=image_features.detach().clone().cpu()
         #run through main mode
         if self.current_epoch>0:
@@ -340,6 +340,9 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
+        self.log("delta solve - proj",torch.sum(torch.linalg.solve(captions,image_features,left=False)-self.text_projection), prog_bar=True,enable_graph=False, rank_zero_only=True)
+        self.log("delta solve - projinv",torch.sum(torch.linalg.solve(captions,image_features,left=False)-torch.inverse(self.text_projection)), prog_bar=True,enable_graph=False, rank_zero_only=True)
+
         logitsI,logitsT=self.calculate_lossStock(image_features, captions)
         lossim = self.lossim(logitsI, labels)
         #print("logitsT SHAPE ",logitsT.shape)
