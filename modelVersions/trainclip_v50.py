@@ -266,7 +266,8 @@ class LightningCLIPModule(LightningModule):
         return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
         #returns many pos infs 
     def on_validation_epoch_start(self):
-        
+        self.log(self.text_projection.mean(),enable_graph=False)
+
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
         self.model2.eval()
