@@ -340,8 +340,8 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
         #Just do the classification loss on Cifar100
        
-        # self.log("delta solve - proj",torch.allclose(torch.inverse(captions)@image_features,self.text_projection), prog_bar=True,enable_graph=False)
-        # self.log("delta solve - projinv",torch.allclose(torch.inverse(image_features)@captions , torch.inverse(self.text_projection)), prog_bar=True,enable_graph=False)
+        self.log("delta solve - proj",torch.allclose(torch.inverse(captions)@image_features,self.text_projection), prog_bar=True,enable_graph=False)
+        self.log("delta solve - projinv",torch.allclose(torch.inverse(image_features)@captions , torch.inverse(self.text_projection)), prog_bar=True,enable_graph=False)
 
         logitsI,logitsT=self.calculate_lossStock(image_features, captions@self.text_projection)
         lossim = self.lossim(logitsI, labels)
