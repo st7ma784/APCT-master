@@ -303,6 +303,7 @@ class LightningCLIPModule(LightningModule):
         return logits_per_image, logits_per_text
     def validation_step(self,batch,*args):
         #do stock loss here
+        self.log(self.text)
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
        
         self.model1_features = {}  #reset list of forward hooks
