@@ -14,7 +14,6 @@ import matplotlib.pyplot as plt
 from CKA_test import add_colorbar 
 from sklearn.linear_model import LogisticRegression
 
-
 class LightningCLIPModule(LightningModule):
     def __init__(self,
                 
@@ -407,3 +406,25 @@ class LightningCLIPModule(LightningModule):
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
+
+
+def batch_HSIC2(K):
+    #K is Layers x B x B
+    a=torch.sum(K,dim=-1)
+    #print(" K SHAPE ",K.shape)# 0,2,3, are all problem values..
+    b=torch.sum(K,dim=-2)
+    c=torch.sub(torch.pow(torch.sum(a,dim=-1),2)/(K.shape[-2] - 1),torch.sum(a*b,dim=1),alpha=2)
+    #print(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1))
+    output=torch.add(torch.sum(torch.sum(K*K.permute(0,2,1),dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2)))
+    return torch.div(output,(K.shape[-2]*(K.shape[-2] - 3)))
+    #check for why pos infs... 
+def batch_HSIC3(K,L):
+    K=K.unsqueeze(1) # 46,1,B,B
+    L=L.unsqueeze(0) # 1,46, B,B
+    a=torch.sum(L,dim=-1) #1,46,10
+    b=torch.sum(K,dim=-2) #46,1,10
+    #print(a.shape,b.shape)
+    c=torch.sub(torch.mul(torch.sum(b,dim=-1),torch.sum(a,dim=-1)).div((K.shape[-2] - 1)),torch.sum(torch.mul(b,a),dim=-1),alpha=2) #[46,46]- [46,46] =[46,46]
+    #print(c.shape) # expect LayerK, LayerL, 
+    return torch.div(torch.add(torch.sum(torch.sum(K*L,dim=-1),dim=-1),torch.div(c,(K.shape[-2] - 2))),(K.shape[-2]*(K.shape[-2] - 3)))
+    #returns many pos infs 
