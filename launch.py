@@ -35,8 +35,11 @@ def train(config={
     version=int(config.get("codeversion",-1))
     
     from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
+    from model.HSICCalculation import batch_HSIC2,batch_HSIC3
+    from model.LossCalculation import calculate_loss,calculate_loss2,calculate_loss3,calculate_loss4,calculate_loss5,calculate_lossStock
+    from model.PruneCalculation import PruneHook
     from model.trainclip_v53 import LightningCLIPModule
-
+    
     # if version==22:
     #     from modelVersions.trainclip_v53_noproj import LightningCLIPModule
     # elif version==21:
