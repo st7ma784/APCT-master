@@ -41,6 +41,10 @@ def SlurmRun(args):
         'conda activate $CONDADIR/envs/open-ce',# ...and activate the conda environment
     ])
     script_name= os.path.realpath(sys.argv[0]) #Find this scripts name...
+    #move to folder
+    print(os.path.join(*script_name.split("/")[:-1]))
+    sub_commands.append('cd {}'.format(os.path.join(*script_name.split("/")[:-1])))
+
     sub_commands.append('srun {} {} --sweep {} --dir {}'.format(comm, script_name, args.sweep, args.dir))
     sub_commands = [x.lstrip() for x in sub_commands]        
 
