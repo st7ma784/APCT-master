@@ -24,8 +24,17 @@ if __name__=="__main__":
             'transformer_width':{
                 'values': [512]
             },
-            'codeversion':{
-                'values':[10,11,12,13,14,15,16,17,18,19,20,21,22]
+            'logitsVersion':{
+                'values':[0,1,2,3,4]
+            },
+            "prune":{
+                'values':[True,False]
+            },
+            "normLogits":{
+                'values':[True,False]
+            },
+            "projection":{
+                'values':["None","inv","iinv"]
             },
             'transformer_heads':{
                 'values': [16]
