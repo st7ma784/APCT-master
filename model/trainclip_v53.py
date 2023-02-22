@@ -15,7 +15,7 @@ from CKA_test import add_colorbar
 from sklearn.linear_model import LogisticRegression
 import sys
 sys.path.append("./model")
-from model.HSICCalculation import batch_HSIC2,batch_HSIC3
+from .HSICCalculation import batch_HSIC2,batch_HSIC3
 
 class LightningCLIPModule(LightningModule):
     def __init__(self,
