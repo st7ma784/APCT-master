@@ -104,9 +104,9 @@ class LightningCLIPModule(LightningModule):
         self.initialize_parameters()
         if exactlabels:
             testBatch=torch.rand(self.hparams.batch_size,self.transformer_width)
-            self.labels=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch)
+            self.label=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch)
         else:
-            self.labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
+            self.label=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
@@ -193,7 +193,7 @@ class LightningCLIPModule(LightningModule):
         
     def training_step(self, batch, batch_idx,optimizer_idx=0):
 
-        labels=self.labels[:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0]]        
+        labels=self.label[:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0]]        
         im,captions= batch[0],batch[1]
         
         logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
