@@ -193,7 +193,7 @@ class LightningCLIPModule(LightningModule):
         
     def training_step(self, batch, batch_idx,optimizer_idx=0):
 
-        labels=self.label[:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0]]        
+        labels=self.label[:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0]].to(self.device,non_blocking=True) 
         im,captions= batch[0],batch[1]
         
         logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
