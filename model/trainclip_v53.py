@@ -20,7 +20,7 @@ class LightningCLIPModule(LightningModule):
                 learning_rate,
                 logitsversion=0,
                 normlogits=True,
-                proj='inv',
+                projection='inv',
                 prune=True,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
@@ -91,8 +91,8 @@ class LightningCLIPModule(LightningModule):
         else:
             from model.LossCalculation import calculate_loss as cl
         self.calculate_loss=cl
-        self.norm=normlogits
-        self.proj=proj
+        self.normlogits=normlogits
+        self.projection=projection
         self.prune=prune
         if self.prune:
             from model.PruneCalculation import PruneHook
@@ -161,9 +161,9 @@ class LightningCLIPModule(LightningModule):
         caption_features4=self.encode_text(captions4)
         caption_features5=self.encode_text(captions5)
 
-        if self.proj=="inv":
+        if self.projection=="inv":
             image_features=image_features@ self.text_projection
-        elif self.proj=="iinv":
+        elif self.projection=="iinv":
             image_features=image_features@torch.inverse(self.text_projection)
         else:
             caption_features1=caption_features1@self.text_projection
@@ -172,7 +172,7 @@ class LightningCLIPModule(LightningModule):
             caption_features4=caption_features4@self.text_projection
             caption_features5=caption_features5@self.text_projection
         
-        return self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5,norm=self.norm)*self.logit_scale.exp()
+        return self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5,norm=self.normlogits)*self.logit_scale.exp()
 
     def on_train_epoch_start(self) -> None:
         if self.prune:
@@ -286,6 +286,16 @@ class LightningCLIPModule(LightningModule):
         joint_HSIC=torch.nan_to_num(batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
        
+
+        if self.projection=="inv":
+            image_features=image_features@ self.text_projection
+        elif self.projection=="iinv":
+            image_features=image_features@torch.inverse(self.text_projection)
+        else:
+            captions=captions@self.text_projection
+
+
+
         logitsI,logitsT=self.calculate_lossStock(image_features, captions) 
         lossim = self.loss(logitsI*self.logit_scale.exp(), labels)
         loss1 = self.loss(logitsT*self.logit_scale.exp(), labels)

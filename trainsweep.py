@@ -30,7 +30,7 @@ if __name__=="__main__":
             "prune":{
                 'values':[True,False]
             },
-            "normLogits":{
+            "normlogits":{
                 'values':[True,False]
             },
             "projection":{
