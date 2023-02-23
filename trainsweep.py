@@ -30,6 +30,10 @@ if __name__=="__main__":
             "prune":{
                 'values':[True,False]
             },
+            "exactlabels":{
+                'values':[True,False]
+            },
+
             "normlogits":{
                 'values':[True,False]
             },
