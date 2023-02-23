@@ -302,7 +302,7 @@ class LightningCLIPModule(LightningModule):
             captions=captions@self.text_projection
 
 
-
+        print("self.logit scale is 14 right? ",self.logit_scale.exp())
         logitsI,logitsT=self.calculate_lossStock(image_features, captions) 
         lossim = self.loss(logitsI*self.logit_scale.exp(), labels)
         loss1 = self.loss(logitsT*self.logit_scale.exp(), labels)
