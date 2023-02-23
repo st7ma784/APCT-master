@@ -103,10 +103,10 @@ class LightningCLIPModule(LightningModule):
             self.pruneHooks=[]
         self.initialize_parameters()
         if exactlabels:
-            testBatch=torch.rand(self.hparam.batch_size,self.transformer_width)
+            testBatch=torch.rand(self.hparams.batch_size,self.transformer_width)
             self.labels=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch)
         else:
-            self.labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparam.batch_size,dtype=torch.float,device=self.device))))))
+            self.labels=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
 
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
