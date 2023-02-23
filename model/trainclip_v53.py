@@ -103,8 +103,8 @@ class LightningCLIPModule(LightningModule):
             self.pruneHooks=[]
         self.initialize_parameters()
         if exactlabels:
-            testBatch=torch.rand(self.hparams.batch_size,self.transformer_width)
-            self.label=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch)
+            testBatch=torch.rand(self.hparams.batch_size,self.transformer_width,device=self.device)
+            self.label=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch).to(self.device,non_blocking=True)
         else:
             self.label=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
 
