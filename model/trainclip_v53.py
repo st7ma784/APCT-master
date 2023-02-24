@@ -313,8 +313,8 @@ class LightningCLIPModule(LightningModule):
 
         print("self.logit scale is 14 right? ",self.logit_scale.exp())
         logitsI,logitsT=self.calculate_lossStock(image_features, captions) 
-        lossim = self.loss(logitsI*self.logit_scale.exp(), labels)
-        loss1 = self.loss(logitsT*self.logit_scale.exp(), labels)
+        lossim = self.loss(logitsI*(self.logit_scale.exp()/3), labels)
+        loss1 = self.loss(logitsT*(self.logit_scale.exp()/3), labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
