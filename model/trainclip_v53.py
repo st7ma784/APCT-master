@@ -201,7 +201,11 @@ class LightningCLIPModule(LightningModule):
         logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
         self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False)
         self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False)
-
+        # The idea is that good logits are 1s,   bad should be -1s... so if logits are coming back as ~6000....
+        #  Option 1: divide down.
+        #  Option 2: 1- output...
+        # option 3: logarithmic functions? 
+        
         lossim = self.loss(logits, labels)
         loss1 = self.loss(logits.permute(1,2,3,4,5,0), labels)
         loss2 = self.loss(logits.permute(2,3,4,5,0,1), labels)
