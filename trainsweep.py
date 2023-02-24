@@ -38,7 +38,7 @@ if __name__=="__main__":
                 'values':[True,False]
             },
             "projection":{
-                'values':["None","inv","iinv"]
+                'values':["None","inv","iinv", ""]
             },
             'transformer_heads':{
                 'values': [16]

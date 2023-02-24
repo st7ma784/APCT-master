@@ -300,7 +300,7 @@ class LightningCLIPModule(LightningModule):
             image_features=image_features@ self.text_projection
         elif self.projection=="iinv":
             image_features=image_features@torch.inverse(self.text_projection)
-        else:
+        elif self.projection=="None":
             captions=captions@self.text_projection
 
 
