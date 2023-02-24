@@ -89,6 +89,8 @@ class LightningCLIPModule(LightningModule):
             from model.LossCalculation import calculate_loss4 as cl
         elif logitsversion==4:
             from model.LossCalculation import calculate_loss5 as cl
+        elif logitsversion==5:
+            from model.LossCalculation import calculate_loss6 as cl
         else:
             from model.LossCalculation import calculate_loss as cl
         self.calculate_loss=cl
@@ -205,7 +207,7 @@ class LightningCLIPModule(LightningModule):
         #  Option 1: divide down.
         #  Option 2: 1- output...
         # option 3: logarithmic functions? 
-        
+
         lossim = self.loss(logits, labels)
         loss1 = self.loss(logits.permute(1,2,3,4,5,0), labels)
         loss2 = self.loss(logits.permute(2,3,4,5,0,1), labels)
