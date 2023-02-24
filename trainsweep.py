@@ -2,7 +2,7 @@ import wandb
 
 if __name__=="__main__":
     sweep_config = {
-        'name':"test pruning",
+        'name':"run full",
         'method': 'random',  # Randomly sample the hyperparameter space (alternatives: grid, bayes)
         'metric': {  # This is the metric we are interested in maximizing
             'name': 'loss',
@@ -24,7 +24,7 @@ if __name__=="__main__":
             'transformer_width':{
                 'values': [512]
             },
-            'logitsVersion':{
+            'logitsversion':{
                 'values':[0,1,2,3,4]
             },
             "prune":{
