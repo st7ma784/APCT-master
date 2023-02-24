@@ -226,6 +226,7 @@ class LightningCLIPModule(LightningModule):
 
     def on_validation_epoch_start(self):
         self.log("Mean Projection Value",self.text_projection.mean(),enable_graph=False)
+        self.log("logit scale",self.logit_scale.exp())
 
         self.naninfcount=0
         self.model2,_ = clip.load("ViT-B/32", device=self.device)
