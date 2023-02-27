@@ -46,7 +46,7 @@ _PYTORCH_PRUNING_METHOD = {
 
 _PARAM_TUPLE = Tuple[nn.Module, str]
 _PARAM_LIST = Sequence[_PARAM_TUPLE]
-_MODULE_CONTAINERS = (LightningModule, nn.Sequential, nn.ModuleList, nn.ModuleDict)
+_MODULE_CONTAINERS = (pl.LightningModule, nn.Sequential, nn.ModuleList, nn.ModuleDict)
 
 class PruneHook(EntropyHook):
     def __init__(self, model, Gamma, ratio=1, **kwargs):
