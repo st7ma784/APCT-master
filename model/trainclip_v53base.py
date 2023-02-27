@@ -301,8 +301,6 @@ class LightningCLIPModule(LightningModule):
 
         self.log('val_loss-stock', torch.stack([val["loss"] for val in acc_val],dim=0).mean(), prog_bar=True,enable_graph=False, rank_zero_only=True)
 
-        if self.current_epoch>0:
-            self.log("liner_acc",np.sum(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
 
         self.unfreeze()
         self.train()

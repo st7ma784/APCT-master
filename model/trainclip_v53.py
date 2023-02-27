@@ -263,7 +263,7 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         image_features=self.encode_image(batch[0])
-   
+        #if rank 0
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
@@ -303,8 +303,8 @@ class LightningCLIPModule(LightningModule):
         self.log("mean validation stock logits ", logitsI.mean())
         labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
 
-        lossim = self.loss(logitsI* 14.9, labels)
-        loss1 = self.loss(logitsT* 14.9, labels)
+        lossim = self.loss(logitsI* 80, labels)
+        loss1 = self.loss(logitsT* 80, labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
@@ -326,10 +326,6 @@ class LightningCLIPModule(LightningModule):
         self.log( "TProbe",self.Tclassifier.score(tfeatures, labels))
 
         self.log('val_loss-stock', torch.stack([val["loss"] for val in acc_val],dim=0).mean(), prog_bar=True,enable_graph=False, rank_zero_only=True)
-
-        if self.current_epoch>0:
-            self.log("liner_acc",np.sum(self.Linearloss), prog_bar=True,enable_graph=False, rank_zero_only=True)
-
         self.unfreeze()
         self.train()
         self.plot_results("IM","IMHSIC{}.jpg".format(self.current_epoch))
@@ -343,14 +339,14 @@ class LightningCLIPModule(LightningModule):
         del self.model2
         if self.prune:
             for hook in self.pruneHooks:
-                    global_entropy = hook.retrieve()
-                    hook.remove()        
+                global_entropy = hook.retrieve()
+                hook.remove()        
 
-                    # im_scores =map(lambda name, block: prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]), filter(lambda name,block: isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys(), self.encode_image.named_modules()[:-1]))
-                    # for imscoredict in im_scores:
-                    #     for (param_to_prune, im_score) in imscoredict.items():
-                    #         prune_module(param_to_prune, im_score, self.args)
-                    #then purun accordingly 
+                # im_scores =map(lambda name, block: prune_Residual_Attention_block(block, global_entropy[name], self.args["prune_eta"]), filter(lambda name,block: isinstance(block, ResidualAttentionBlock) and name in global_entropy.keys(), self.encode_image.named_modules()[:-1]))
+                # for imscoredict in im_scores:
+                #     for (param_to_prune, im_score) in imscoredict.items():
+                #         prune_module(param_to_prune, im_score, self.args)
+                #then purun accordingly 
         
     def _log_layer(self, model: str, name: str, layer: nn.Module,inp: torch.Tensor, out: torch.Tensor):
         if isinstance(out, tuple):
