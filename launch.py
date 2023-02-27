@@ -37,51 +37,8 @@ def train(config={
     from pytorch_lightning.callbacks import TQDMProgressBar,EarlyStopping
     from model.LossCalculation import calculate_loss,calculate_loss2,calculate_loss3,calculate_loss4,calculate_loss5,calculate_lossStock
     from model.PruneCalculation import PruneHook
-    from model.trainclip_v53 import LightningCLIPModule
+    from model.trainclip_v53base import LightningCLIPModule
     
-    # if version==22:
-    #     from modelVersions.trainclip_v53_noproj import LightningCLIPModule
-    # elif version==21:
-    #     from modelVersions.trainclip_v53_projinv import LightningCLIPModule
-
-    # elif version==20:
-    #     from modelVersions.trainclip_v53_proji import LightningCLIPModule
-    # elif version==18:
-    #     from modelVersions.trainclip_v48_fxloss import LightningCLIPModule
-    # elif version==17:
-    #     from modelVersions.trainclip_v53_fxloss import LightningCLIPModule
-    # elif version==16:
-    #     from modelVersions.trainclip_v52_fxloss import LightningCLIPModule
-    # elif version==15:
-    #     from modelVersions.trainclip_v53 import LightningCLIPModule
-    # elif version==14:
-    #     from modelVersions.trainclip_v52 import LightningCLIPModule
-    # elif version==13:
-    #     from modelVersions.trainclip_v51 import LightningCLIPModule
-    # elif version==12:
-    #     from modelVersions.trainclip_v50 import LightningCLIPModule
-    # elif version==11:
-    #     from modelVersions.trainclip_v49 import LightningCLIPModule
-    # elif version==10:
-    #     from modelVersions.trainclip_v48_BaselineStock import LightningCLIPModule
-    # elif version==9:
-    #     from modelVersions.trainclip_v48_Baseline import LightningCLIPModule #this is for n=2 with my loss
-    # elif version==8:
-    #     from modelVersions.trainclip_v48_Entropy import LightningCLIPModule
-    # elif version==7:
-    #     from modelVersions.trainclip_v48_Prune import LightningCLIPModule
-    # elif version==6:
-    #     from modelVersions.trainclip_v48_var import LightningCLIPModule
-    # elif version==5:
-    #     from modelVersions.trainclip_v47_var import LightningCLIPModule
-    # elif version==4:
-    #     from modelVersions.trainclip_v46_var import LightningCLIPModule
-    # elif version==3:
-    #     from modelVersions.trainclip_v45_var import LightningCLIPModule
-    # elif version==1:
-    #     from modelVersions.trainclip_v37_einsumimp import LightningCLIPModule
-    # else:
-    #     print("CONFIG",config)
     model=LightningCLIPModule( train_batch_size=config["batch_size"],
                                 **config)
     if dir is None:

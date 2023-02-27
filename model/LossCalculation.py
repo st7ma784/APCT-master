@@ -13,6 +13,17 @@ def calculate_lossStock(I, C1):
     logits_per_text =  C1 @ I.T
     #calculate loss
     return logits_per_image, logits_per_text
+
+def calculate_lossbase(I, C1, C2, C3, C4, C5,norm=True):
+
+    #normalize image and text features
+    I = I / I.norm(dim=-1, keepdim=True)
+    C1 = C1 / C1.norm(dim=-1, keepdim=True)
+    #calculate logits
+    logits_per_image =  I @ C1.T
+    #calculate loss
+    return logits_per_image
+
 def calculate_loss(  I, C1, C2, C3, C4, C5,norm=True):
     if norm:
         I = I / I.norm(dim=-1, keepdim=True)
