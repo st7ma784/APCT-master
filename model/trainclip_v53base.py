@@ -22,7 +22,6 @@ class LightningCLIPModule(LightningModule):
                 normlogits=True,
                 projection='inv',
                 prune=True,
-                meanloss=False,
                 exactlabels=False,
                 adam_epsilon: float = 1e-8,
                 warmup_steps: int = 0,
@@ -43,7 +42,7 @@ class LightningCLIPModule(LightningModule):
         super().__init__()
         self.save_hyperparameters()
         print("learning_rate",learning_rate)
-        self.meanloss=meanloss
+
         self.context_length = context_length
         self.encoder = Transformer(
             width=transformer_width,
@@ -71,8 +70,7 @@ class LightningCLIPModule(LightningModule):
         self.logit_scale = nn.Parameter(torch.ones([]) * np.log(1 / 0.07))
         self.transformer_width=transformer_width
         self.handles=[]
-        self.features=[]
-        
+
         self.labels=[]
         self.model1_info={'Name':"SelfCLIP",}
         self.model2_info={'Name': "Stock CLIP",}
@@ -105,14 +103,7 @@ class LightningCLIPModule(LightningModule):
         else:
             self.pruneHooks=[]
         self.initialize_parameters()
-        if exactlabels:
-            testBatch=torch.rand(self.hparams.batch_size,self.transformer_width,device=self.device)
-            self.label=self.calculate_loss(testBatch,testBatch,testBatch,testBatch,testBatch,testBatch).to(self.device,non_blocking=True)
-            print("using labels: ", self.label[:2,:2,:2,:2,:2,:2])
-        #elif add in the case where using -inf or -1 instead of zeros as below....
-        else:
-            self.label=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
-
+       
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
@@ -168,25 +159,17 @@ class LightningCLIPModule(LightningModule):
     def forward(self, im, captions1, captions2, captions3, captions4, captions5):
         image_features=self.encode_image(im)
         caption_features1=self.encode_text(captions1)
-        caption_features2=self.encode_text(captions2)
-        caption_features3=self.encode_text(captions3)
-        caption_features4=self.encode_text(captions4)
-        caption_features5=self.encode_text(captions5)
 
+       
 
         if self.projection=="inv":
             image_features=image_features@ self.text_projection
         elif self.projection=="iinv":
             image_features=image_features@torch.inverse(self.text_projection)
         elif self.projection=="None":
-          
             caption_features1=caption_features1@self.text_projection
-            caption_features2=caption_features2@self.text_projection
-            caption_features3=caption_features3@self.text_projection
-            caption_features4=caption_features4@self.text_projection
-            caption_features5=caption_features5@self.text_projection
         
-        return self.calculate_loss(image_features, caption_features1, caption_features2, caption_features3, caption_features4, caption_features5,norm=self.normlogits)*self.logit_scale.exp()
+        return self.calculate_lossStock(image_features, caption_features1)[0]*self.logit_scale.exp()
 
     def on_train_epoch_start(self) -> None:
         if self.prune:
@@ -200,31 +183,24 @@ class LightningCLIPModule(LightningModule):
         
     def training_step(self, batch, batch_idx,optimizer_idx=0):
 
-        labels=self.label[:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0],:batch[0].shape[0]].to(self.device,non_blocking=True) 
+        labels=torch.arange(batch[0].shape[0],device=self.device)
         im,captions= batch[0],batch[1]
         
         logits=self(im,captions[:,0],captions[:,1],captions[:,2],captions[:,3],captions[:,4])
-        self.log("first logit",logits[0,0,0,0,0,0],enable_graph=False)
-        self.log("BAD logit",logits[1,2,3,4,5,0],enable_graph=False)
+        self.log("first logit",logits[0,0],enable_graph=False)
+        self.log("BAD logit",logits[0,1],enable_graph=False)
+        self.log("logit scale",self.logit_scale.exp())
+
         # The idea is that good logits are 1s,   bad should be -1s... so if logits are coming back as ~6000....
         #  Option 1: divide down.
         #  Option 2: 1- output...
         # option 3: logarithmic functions? 
 
         lossim = self.loss(logits, labels)
-        loss1 = self.loss(logits.permute(1,2,3,4,5,0), labels)
-        loss2 = self.loss(logits.permute(2,3,4,5,0,1), labels)
-        loss3 = self.loss(logits.permute(3,4,5,0,1,2), labels)
-        loss4 = self.loss(logits.permute(4,5,0,1,2,3), labels)
-        loss5 = self.loss(logits.permute(5,0,1,2,3,4), labels)
-        if self.meanloss:
-            loss = lossim+loss1+loss2+loss3+loss4+loss5
-            loss=loss/6
-        else:
-            losst=loss1+loss2+loss3+loss4+loss5
-            losst=losst/5
-            loss=lossim+losst
-            loss=loss/2
+        loss1 = self.loss(logits.permute(1,0), labels)
+       
+        loss = lossim+loss1
+        loss=loss/2
         loss = loss.mean()
         self.log('train_loss', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         
@@ -255,15 +231,13 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix2=torch.zeros([],device=self.device)
         
         self.eval()
-        
 
     def validation_step(self,batch,*args):
         #do stock loss here
-       
+        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         image_features=self.encode_image(batch[0])
-   
         self.model2.encode_image(batch[0])# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.IMhsic_matrix0=torch.add(self.IMhsic_matrix0,torch.nan_to_num(batch_HSIC2(a),nan=0.0,posinf=100,neginf=-200)) 
@@ -276,11 +250,15 @@ class LightningCLIPModule(LightningModule):
         self.model1_features = {}  #reset list of forward hooks
         self.model2_features = {}  #reset list of forward hooks
         choice=torch.randint(0,5,(1,)).item()
-        #rint("choice", choice)
+        #print("choice", choice)
         c=batch[1][:,choice]
         c=c.squeeze()
 
         captions=self.encode_text(c) #run through main mode
+
+        # c=captions.detach().clone().cpu()
+        #run through main mode
+        
         self.model2.encode_text(c)# to compare supervision model
         a=torch.nan_to_num(torch.stack(list(self.model1_features.values())))
         self.CAPhsic_matrix0=torch.add(self.CAPhsic_matrix0,batch_HSIC2(a)) 
@@ -288,8 +266,6 @@ class LightningCLIPModule(LightningModule):
         self.CAPhsic_matrix2=torch.add(self.CAPhsic_matrix2,batch_HSIC2(a))
         joint_HSIC=torch.nan_to_num(batch_HSIC3(a,torch.nan_to_num(torch.stack(list(self.model1_features.values())))))
         self.CAPhsic_matrix1=torch.add(self.CAPhsic_matrix1,joint_HSIC) 
-       
-
         if self.projection=="inv":
             image_features=image_features@ self.text_projection
         elif self.projection=="iinv":
@@ -301,14 +277,12 @@ class LightningCLIPModule(LightningModule):
         # print("self.logit scale is 14 right? ",self.logit_scale.exp())
         logitsI,logitsT=self.calculate_lossStock(image_features, captions) 
         self.log("mean validation stock logits ", logitsI.mean())
-        labels=torch.arange(batch[0].shape[0],dtype=torch.long,device=self.device)
-
-        lossim = self.loss(logitsI* 14.9, labels)
-        loss1 = self.loss(logitsT* 14.9, labels)
+        
+        lossim = self.loss(logitsI*(self.logit_scale.exp()), labels)
+        loss1 = self.loss(logitsT*(self.logit_scale.exp()), labels)
         loss = lossim+loss1
         loss=loss/2
         loss = loss.mean()
-        self.log('val_loss-stock', loss, prog_bar=True,enable_graph=False, rank_zero_only=True)
         return {"loss": loss, "imfeatures":image_features, "tfeatures":captions,"classes":batch[2]}
 
     def validation_epoch_end(self,acc_val):

@@ -2,7 +2,7 @@ import wandb
 
 if __name__=="__main__":
     sweep_config = {
-        'name':"run full",
+        'name':"Get LogitScale sweep",
         'method': 'random',  # Randomly sample the hyperparameter space (alternatives: grid, bayes)
         'metric': {  # This is the metric we are interested in maximizing
             'name': 'loss',
@@ -13,7 +13,7 @@ if __name__=="__main__":
                 'values':[5e-5]
             },
             'batch_size': {
-                'values': [10]
+                'values': [64]
             },
             'precision': {
                 'values': ['bf16']
@@ -25,18 +25,12 @@ if __name__=="__main__":
                 'values': [512]
             },
             'logitsversion':{
-                'values':[0,1,2,3,4,5]
+                'values':[0]
             },
             "prune":{
                 'values':[True,False]
             },
-            "exactlabels":{
-                'values':[True,False]
-            },
-
-            "normlogits":{
-                'values':[True,False]
-            },
+            
             "projection":{
                 'values':["None","inv","iinv", ""]
             },

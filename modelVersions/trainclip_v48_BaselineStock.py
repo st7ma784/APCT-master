@@ -365,6 +365,9 @@ class LightningCLIPModule(LightningModule):
             print("r",r.shape)
             hsic_matrix = torch.div(self.CAPhsic_matrix1.squeeze().t() , r)
         hsic_matrix=torch.nan_to_num(hsic_matrix,nan=0)
+        #clip values to -2 - 2
+        hsic_matrix[hsic_matrix>2]=2
+        hsic_matrix[hsic_matrix<-2]=-2
         im = ax.imshow(hsic_matrix.cpu(), origin='lower', cmap='magma')
         ax.set_xlabel(f"Layers {self.model2_info['Name']}", fontsize=15)
         ax.set_ylabel(f"Layers {self.model1_info['Name']}", fontsize=15)
