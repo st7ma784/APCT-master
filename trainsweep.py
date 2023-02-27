@@ -5,7 +5,7 @@ if __name__=="__main__":
         'name':"Final Deploy",
         'method': 'bayes',  # Randomly sample the hyperparameter space (alternatives: grid, bayes)
         'metric': {  # This is the metric we are interested in maximizing
-            'name': 'val_loss-stock',
+            'name': 'train_loss',
             'goal': 'minimize'   
         },
         'parameters': {
@@ -13,7 +13,7 @@ if __name__=="__main__":
                 'values':[5e-5]
             },
             'batch_size': {
-                'values': [64]
+                'values': [10]
             },
             'precision': {
                 'values': ['bf16']
