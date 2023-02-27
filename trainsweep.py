@@ -30,7 +30,9 @@ if __name__=="__main__":
             "prune":{
                 'values':[True,False]
             },
-            
+            "meanloss":{
+                'values':[True,False]
+            },
             "projection":{
                 'values':["None","inv","iinv", ""]
             },
