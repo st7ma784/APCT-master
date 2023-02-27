@@ -25,7 +25,7 @@ if __name__=="__main__":
                 'values': [512]
             },
             'logitsversion':{
-                'values':[0]
+                'values':[0,1,2,3,4,5]
             },
             "prune":{
                 'values':[True,False]
