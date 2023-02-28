@@ -18,7 +18,6 @@ def wandbtrain(config=None,dir=None,devices=None,accelerator=None,Dataset=None,p
         config=run.config.as_dict()
     
     train(config,dir,devices,accelerator,Dataset,logtool)
-
 def train(config={
         "batch_size":16,
         "learning_rate":2e-3,
@@ -38,7 +37,7 @@ def train(config={
     from model.LossCalculation import calculate_loss,calculate_loss2,calculate_loss3,calculate_loss4,calculate_loss5,calculate_lossStock
     from model.PruneCalculation import PruneHook
     from model.trainclip_v53 import LightningCLIPModule
-    
+    # from pl_bolts.datamodules import ImagenetDataModule
     model=LightningCLIPModule( train_batch_size=config["batch_size"],
                                 **config)
     if dir is None:
@@ -77,7 +76,7 @@ def train(config={
             num_nodes=int(os.getenv("SLURM_NNODES",1)),
             callbacks=callbacks,
             #gradient_clip_val=0.25,# Not supported for manual optimization
-            fast_dev_run=False,
+            fast_dev_run=True,
             precision=p
     )
     if config["batch_size"] !=1:
@@ -85,7 +84,20 @@ def train(config={
         trainer.fit(model,Dataset)
     else:
         return 0 #No need to train if batch size is 1
-
+    #do test
+    
+    # TestLoader=ImagenetDataModule(
+    #     data_dir=dir, 
+    #     meta_dir=dir,
+    #     num_imgs_per_val_class=50,
+    #     image_size=224,
+    #     num_workers=4, 
+    #     batch_size=config["batch_size"], 
+    #     shuffle=True,
+    #     pin_memory=True,
+    #     drop_last=True)
+    # trainer.test(model,TestLoader)
+    
 def SlurmRun(trialconfig):
 
     job_with_version = '{}v{}'.format("SINGLEGPUTESTLAUNCH", 0)

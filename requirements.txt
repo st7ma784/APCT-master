@@ -9,3 +9,4 @@ pycocotools
 setuptools==59.5.0
 test_tube
 scikit-learn
+pytorch_lightning_bolts

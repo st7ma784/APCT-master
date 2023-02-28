@@ -411,8 +411,21 @@ class LightningCLIPModule(LightningModule):
         if save_path is not None:
             plt.savefig(save_path, dpi=300)
 
+    def test_step(self,batch,*args):
+        #do stock loss here
+        image_features=self.encode_image(batch[0])
 
+        return {"imfeatures":image_features, "classes":batch[1]}
 
+    def test_epoch_end(self,acc_val):
+        imfeatures=torch.nan_to_num(torch.cat([val["imfeatures"] for val in acc_val],dim=0)).cpu().numpy()
+        labels=torch.cat([val["classes"] for val in acc_val],dim=0).cpu().numpy()
+        if not hasattr(self,"Iclassifier"):
+            self.Iclassifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1, n_jobs=-1)
+   
+        self.Iclassifier.fit(imfeatures, labels)
+        self.log( "TopK Imagenet",self.Iclassifier.score(imfeatures, labels))
+        
 def batch_HSIC2(K):
     #K is Layers x B x B
     a=torch.sum(K,dim=-1)
