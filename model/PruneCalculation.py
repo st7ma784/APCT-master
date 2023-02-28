@@ -91,8 +91,10 @@ class PruneHook(EntropyHook):
             im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
             prune_module(module,"weight", im_score, self.args)
             #now consider pruning the near by batch norm layers 
-    
-
+    def remove(self):
+        for handle in self.handles:
+            handle.remove()
+        self.features = {}
 def prune_module(layer,name, im_score, args):
     
     cur_param = getattr(layer, name)
@@ -183,47 +185,45 @@ class myPruneCallback(pl.callbacks.ModelPruning):
         self.activations =set([nn.Linear])#set([nn.LeakyReLU, nn.ReLU, nn.ELU, nn.Sigmoid, nn.GELU,QuickGELU, nn.Tanh, nn.PReLU])
         self.Gamma=torch.tensor(Gamma, dtype=torch.float32)
 
-    def hook(self, layer, input_var, output_var, layer_name):
-        #if random()>self.ratio:# here because adds random noise to the data
+    def _hook(self, layer, input_var, output_var, layer_name):
         input=output_var.view(output_var.shape[-1],-1)
         hist=torch.bucketize(input, self.Gamma)# returns index of gamma to each value.
         counts=torch.nn.functional.one_hot(hist, self.Gamma.shape[0]+1).sum(dim=1)
-
-        #counts=torch.bincount(hist,minlength=self.Gamma.shape[0]+1)
         self.features[layer_name]= counts.add(self.features[layer_name])
 
-
-    def on_train_epoch_start(self) -> None:
-        self.PruneHandles=[]
-        self.features=defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device))
-        self.PruneHandles.extend( [module.register_forward_hook(partial(self.hook, layer_name=module_name)) for module_name, module in self.model.named_modules() if type(module) in self.activations])
-
-    def process_layer(self,layer):
+    def _process_layer(self,layer):
         layer = layer.reshape(self.Gamma.shape[0]+1, -1)
         layer /= layer.sum(axis=0)
         return torch.sum(-layer*torch.log(1e-8+layer),dim=0) # changed from 0 
 
-    def process_block_entropy(self, blockdict):
+    def _process_block_entropy(self, blockdict):
         if len(blockdict)==0:
             return torch.zeros(1)
         return {k:self.process_layer(v) for k,v in blockdict.items()}
 
-    def retrieve(self,eta=-1):
+    def _retrieve(self,plmodule,eta=-1):
         if len(self.features.keys())==0:
             return {}
-        entropy=self.process_block_entropy(self.features) 
-        print("entropy",entropy.keys())
+        entropy=self._process_block_entropy(self.features) 
 
         #for block_name, block in self.model.named_modules():
-        for (module_name, module) in filter(lambda item : type(item[1]) in self.activations and random()<self.ratio, self.model.named_modules()):
+        for (module_name, module) in filter(lambda item : type(item[1]) in self.activations and random()<self.ratio, plmodule.named_modules()):
             im_score = compute_importance(module.weight.detach(), entropy[module_name], eta)
             prune_module(module,"weight", im_score, self.args)
             #now consider pruning the near by batch norm layers 
-    def on_train_epoch_end(self) -> None:
-        for hook in self.pruneHooks:
-            hook.remove()
-    def on_validation_epoch_end(self):
-        for hook in self.pruneHooks:
-            global_entropy = hook.retrieve()
-            hook.remove()        
+
+    
+
+    def on_train_epoch_start(self,trainer,plmodule) -> None:
+        self.PruneHandles=[]
+        self.features=defaultdict(lambda: torch.zeros((1,self.Gamma.shape[0]+1), dtype=torch.float32, device=self.device))
+        self.PruneHandles.extend( [module.register_forward_hook(partial(self._hook, layer_name=module_name)) for module_name, module in plmodule.named_modules() if type(module) in self.activations])
+
+    def on_train_epoch_end(self,trainer,plmodule) -> None:
+        self._retrieve(plmodule)
+        map(lambda hook: hook.remove(),self.PruneHandles)
+    def on_validation_epoch_end(self,trainer,plmodule):
+        self._retrieve(plmodule)
+        map(lambda hook: hook.remove(),self.PruneHandles)
+
 
