@@ -234,7 +234,10 @@ class LightningCLIPModule(LightningModule):
     def configure_optimizers(self):
         
         optimizer = torch.optim.Adam(
-            self.parameters(), lr=self.hparams.learning_rate, eps=self.hparams.adam_epsilon)
+            self.parameters(), lr=self.hparams.learning_rate, eps=10e-8,
+            weight_decay=0.1,
+            betas=(0.9, 0.95),
+            )
         lr_schedulers = {"scheduler": ReduceLROnPlateau(optimizer), "monitor": "train_loss"}
 
         return [optimizer],[lr_schedulers]
@@ -316,9 +319,9 @@ class LightningCLIPModule(LightningModule):
         tfeatures=torch.nan_to_num(torch.cat([val["tfeatures"] for val in acc_val],dim=0)).cpu().numpy()
         labels=torch.cat([val["classes"] for val in acc_val],dim=0).cpu().numpy()
         if not hasattr(self,"Iclassifier"):
-            self.Iclassifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
+            self.Iclassifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1, n_jobs=-1)
         if not hasattr(self,"Tclassifier"):
-            self.Tclassifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1)
+            self.Tclassifier = LogisticRegression(random_state=0, C=0.316, max_iter=1000, verbose=1, n_jobs=-1)
         
         self.Iclassifier.fit(imfeatures, labels)
         self.log( "ImProbe",self.Iclassifier.score(imfeatures, labels))
