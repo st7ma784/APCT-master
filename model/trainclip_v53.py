@@ -115,13 +115,15 @@ class LightningCLIPModule(LightningModule):
             self.label=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
         self.maskLoss=maskLosses
         if self.maskLoss:
+            self.maskloss=torch.nn.MSELoss(reduction='none')
+
             B=self.hparams.batch_size
             N=6
             def setview(V,N):
                 V[N]=B
                 print(V)
                 return V
-            Views=list(map(lambda N: setview(N[1],N[0]), enumerate(torch.ones((N,N),dtype=torch.long).tolist())))
+            Views=tuple(map(lambda N: setview(N[1],N[0]), enumerate(torch.ones((N,N),dtype=torch.long).tolist())))
             shape=torch.broadcast_shapes(*Views)
             cube=torch.stack(list(map(lambda Arr: Arr[0].view(*Arr[1]).expand(shape),zip([torch.arange(B)]*N,Views))),dim=-1)#dim=0) #shape (B^N ,B)
             encodings=torch.nn.functional.one_hot(cube,num_classes=B) #should be of shape B^N (Base Shape) X B(one hot)
@@ -229,8 +231,9 @@ class LightningCLIPModule(LightningModule):
         #  Option 2: 1- output...
         # option 3: logarithmic functions? 
         if self.maskLoss:
+            loss=self.maskloss(logits,labels)
             for mask in self.masks:
-               self.log("maskVal={},lossI".format(mask),self.loss(logits,torch.where(self.LossMass==mask, -100,self.labels)),prog_bar=True,enable_graph=False, rank_zero_only=True)
+               self.log("maskVal={}".format(mask),torch.mean(loss[self.Lossmasks==mask]),enable_graph=False, rank_zero_only=True)
 
             
 
