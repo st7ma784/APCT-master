@@ -99,10 +99,17 @@ class ImagenetDataModule(LightningDataModule):
         dirs = os.listdir(data_dir)
 
         if split not in dirs:
-            raise FileNotFoundError(
-                f"a {split} Imagenet split was not found in {data_dir},"
-                f" make sure the folder contains a subfolder named {split}"
-            )
+
+            try:
+                #download files
+                ImageNetURLS=[
+                    
+                ]
+            except:
+                raise FileNotFoundError(
+                    f"a {split} Imagenet split was not found in {data_dir},"
+                    f" make sure the folder contains a subfolder named {split}"
+                )
 
     def prepare_data(self) -> None:
         """This method already assumes you have imagenet2012 downloaded. It validates the data using the meta.bin.
@@ -114,10 +121,7 @@ class ImagenetDataModule(LightningDataModule):
         for split in ["train", "val"]:
             files = os.listdir(os.path.join(self.data_dir, split))
             if "meta.bin" not in files:
-                raise FileNotFoundError(
-                    """
-                no meta.bin present. Imagenet is no longer automatically downloaded by PyTorch.
-                To get imagenet:
+                '''
                 1. download yourself from http://www.image-net.org/challenges/LSVRC/2012/downloads
                 2. download the devkit (ILSVRC2012_devkit_t12.tar.gz)
                 3. generate the meta.bin file using the devkit
@@ -126,7 +130,11 @@ class ImagenetDataModule(LightningDataModule):
                 from pl_bolts.datasets import UnlabeledImagenet
                 path = '/path/to/folder/with/ILSVRC2012_devkit_t12.tar.gz/'
                 UnlabeledImagenet.generate_meta_bins(path)
-                """
+                '''
+                download_url(
+                    "https://pl-bolts-weights.s3.us-east-2.amazonaws.com/meta.bin",
+                    self.data_dir,
+                    "meta.bin",
                 )
 
     def train_dataloader(self) -> DataLoader:
