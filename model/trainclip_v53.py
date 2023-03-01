@@ -20,6 +20,7 @@ class LightningCLIPModule(LightningModule):
                 learning_rate,
                 logitsversion=0,
                 normlogits=True,
+                maskLosses=True,
                 projection='inv',
                 prune=True,
                 meanloss=False,
@@ -112,7 +113,24 @@ class LightningCLIPModule(LightningModule):
         #elif add in the case where using -inf or -1 instead of zeros as below....
         else:
             self.label=torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.diag_embed(torch.ones(self.hparams.batch_size,dtype=torch.float,device=self.device))))))
-
+        self.maskLoss=maskLosses
+        if self.maskLoss:
+            B=self.hparams.batch_size
+            N=6
+            def setview(V,N):
+                V[N]=B
+                print(V)
+                return V
+            Views=list(map(lambda N: setview(N[1],N[0]), enumerate(torch.ones((N,N),dtype=torch.long).tolist())))
+            shape=torch.broadcast_shapes(*Views)
+            cube=torch.stack(list(map(lambda Arr: Arr[0].view(*Arr[1]).expand(shape),zip([torch.arange(B)]*N,Views))),dim=-1)#dim=0) #shape (B^N ,B)
+            encodings=torch.nn.functional.one_hot(cube,num_classes=B) #should be of shape B^N (Base Shape) X B(one hot)
+            bincounts=torch.sum(encodings,dim=-2)# gets me bin counts 
+            print("OneHot counts shape",encodings.shape)
+            print("BinCounts should be B^N x B_indexes", bincounts.shape)
+            self.Lossmasks=torch.sum(torch.pow(bincounts,2),dim=-1)#Should be same shape as self.label
+            self.masks=torch.unique(torch.flatten(self.Lossmasks,0,N-1),dim=0,sorted=False) 
+            assert self.label.shape == self.Lossmasks.shape
     def build_attention_mask(self):
         # lazily create causal attention mask, with full attention between the vision tokens
         # pytorch uses additive attention mask; fill with -inf
@@ -210,8 +228,15 @@ class LightningCLIPModule(LightningModule):
         #  Option 1: divide down.
         #  Option 2: 1- output...
         # option 3: logarithmic functions? 
+        if self.maskLoss:
+            for mask in self.masks:
+               self.log("maskVal={},lossI".format(mask),self.loss(logits,torch.where(self.LossMass==mask, -100,self.labels)),prog_bar=True,enable_graph=False, rank_zero_only=True)
+
+            
 
         lossim = self.loss(logits, labels)
+            
+
         loss1 = self.loss(logits.permute(1,2,3,4,5,0), labels)
         loss2 = self.loss(logits.permute(2,3,4,5,0,1), labels)
         loss3 = self.loss(logits.permute(3,4,5,0,1,2), labels)
