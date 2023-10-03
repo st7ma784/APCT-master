@@ -125,7 +125,8 @@ class COCODataModule(pl.LightningDataModule):
             os.makedirs(self.data_dir,exist_ok=True)
         if not os.path.exists(self.ann_dir):
             os.makedirs(self.ann_dir,exist_ok=True)
-        urls=['https://images.cocodataset.org/zips/train2014.zip',
+        urls=[
+        'https://images.cocodataset.org/zips/train2014.zip',
                 'https://images.cocodataset.org/zips/val2014.zip',
                 'https://images.cocodataset.org/zips/test2015.zip',
                 'https://images.cocodataset.org/zips/train2017.zip',
@@ -152,19 +153,20 @@ class COCODataModule(pl.LightningDataModule):
                 self.splits['val'].append(name)
             elif name.startswith("test"):
                 self.splits['test'].append(name)
-            if not os.path.exists(os.path.join(location,name)) and not (name.startswith("annotations") and os.path.exists(os.path.join(location,"annotations"))):
+            if not (os.path.exists(os.path.join(location,name))):
+                #WE WONT DOWNLOAD IF THE PATH EXISTS OR IF WE ARE DOWNLOADING ANNOTATIONS AND THE ANNOTATIONS FOLDER EXISTS
                 print(os.path.join(location,name))
                 objs.append(obj)
-                obj.start(blocking=False,  )#There are security problems with Hostename 'images.cocodataset.org' and Certificate 'images.cocodataset.org' so we need to disable the SSL verification
+                obj.start(blocking=True)#There are security problems with Hostename 'images.cocodataset.org' and Certificate 'images.cocodataset.org' so we need to disable the SSL verification
         for obj in objs:
-            while not obj.isFinished():
-                time.sleep(5)
             if obj.isSuccessful():
                 print("Downloaded: %s" % obj.get_dest())
             path = obj.get_dest()
             if path.endswith(".zip"):
                 with zipfile.ZipFile(path, 'r') as zip_ref:
                     try:
+                        if path.split("/")[-1].startswith("annotations"):
+                            zip_ref.extractall(self.ann_dir)
                         zip_ref.extractall(self.data_dir)
                     except Exception as e:
                         print(e)
