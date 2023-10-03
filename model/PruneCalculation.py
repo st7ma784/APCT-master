@@ -3,7 +3,7 @@ import torch
 import pytorch_lightning as pl
 from functools import partial
 import sys
-sys.path.append("./APCT-master")
+sys.path.append("APCT-master")
 from warnings import warn
 from torch.nn.utils.prune import l1_unstructured, random_structured, ln_structured, identity
 from core.pattern import EntropyHook
